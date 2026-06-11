@@ -24,14 +24,30 @@
             <aside class="sidebar" id="sidebar">
                 <div class="sidebar-header">
                     <h2>CobraBub</h2>
-                    <button class="icon-btn" id="refresh-files" title="Refresh">🔄</button>
+                    <div class="header-actions">
+                        <button class="icon-btn" id="refresh-files" title="Refresh">🔄</button>
+                        <button class="icon-btn" id="github-sync" title="GitHub Sync">🐙</button>
+                    </div>
                 </div>
                 <div class="sidebar-actions">
                     <button class="action-btn" id="open-folder-btn">📁 Open Folder</button>
                     <button class="action-btn" id="new-file-btn" title="New File">📄</button>
+                    <button class="action-btn" id="new-folder-btn" title="New Folder">📂</button>
                 </div>
-                <div class="file-tree" id="file-tree">
-                    <div class="empty-state">No folder opened</div>
+                <div class="github-section" id="github-section" style="display: none;">
+                    <div class="github-info">
+                        <span class="github-icon">🐙</span>
+                        <span id="github-repo-name">No repo</span>
+                    </div>
+                    <div class="github-actions">
+                        <button class="action-btn small" id="git-pull" title="Pull">⬇️ Pull</button>
+                        <button class="action-btn small" id="git-push" title="Push">⬆️ Push</button>
+                    </div>
+                </div>
+                <div class="file-tree-container">
+                    <div class="file-tree" id="file-tree">
+                        <div class="empty-state">No folder opened</div>
+                    </div>
                 </div>
             </aside>
 
@@ -59,6 +75,7 @@
                 <div class="panel-header">
                     <h3>🤖 AI Agent</h3>
                     <div class="panel-controls">
+                        <button class="icon-btn" id="attach-file-btn" title="Attach File">📎</button>
                         <button class="icon-btn" id="agent-settings" title="Settings">⚙️</button>
                         <button class="icon-btn" id="toggle-agent-panel" title="Collapse">◀</button>
                     </div>
@@ -69,7 +86,9 @@
                     <select id="model-type">
                         <option value="openai">OpenAI API</option>
                         <option value="anthropic">Anthropic API</option>
-                        <option value="local">Local Model</option>
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="lmstudio">LM Studio</option>
+                        <option value="vllm">vLLM</option>
                         <option value="custom">Custom API</option>
                     </select>
                     <button class="action-btn small" id="configure-model">Configure</button>
@@ -82,9 +101,11 @@
                             Welcome to CobraBub! Select a model and start chatting with your AI assistant.
                         </div>
                     </div>
+                    <div class="attached-files" id="attached-files"></div>
                     <div class="chat-input-area">
-                        <textarea id="chat-input" placeholder="Ask me anything about your code..." rows="3"></textarea>
+                        <textarea id="chat-input" placeholder="Ask me anything about your code... (drag & drop files here)" rows="3"></textarea>
                         <div class="chat-actions">
+                            <button class="action-btn" id="attach-file-chat" title="Attach File">📎</button>
                             <button class="action-btn primary" id="send-message">Send</button>
                             <button class="action-btn" id="run-agent">Run Agent</button>
                         </div>
@@ -114,38 +135,160 @@
 
     <!-- Configuration Modal -->
     <div class="modal" id="config-modal">
-        <div class="modal-content">
+        <div class="modal-content modal-large">
             <div class="modal-header">
                 <h3>Model Configuration</h3>
                 <button class="close-btn" id="close-modal">×</button>
             </div>
             <div class="modal-body">
                 <form id="config-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="model-type-config">Model Type:</label>
+                            <select id="model-type-config">
+                                <option value="openai">OpenAI API</option>
+                                <option value="anthropic">Anthropic API</option>
+                                <option value="ollama">Ollama (Local)</option>
+                                <option value="lmstudio">LM Studio</option>
+                                <option value="vllm">vLLM</option>
+                                <option value="custom">Custom API</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="model-name">Model Name:</label>
+                            <input type="text" id="model-name" placeholder="gpt-4, claude-3, llama2, etc.">
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label for="api-key">API Key:</label>
                         <input type="password" id="api-key" placeholder="Enter your API key">
+                        <small class="form-hint">Required for OpenAI, Anthropic. Optional for local models.</small>
                     </div>
                     <div class="form-group">
-                        <label for="base-url">Base URL (for custom/local):</label>
-                        <input type="text" id="base-url" placeholder="http://localhost:8000">
+                        <label for="base-url">Base URL (for custom/local APIs):</label>
+                        <input type="text" id="base-url" placeholder="http://localhost:11434 (Ollama), http://localhost:1234/v1 (LM Studio)">
+                        <small class="form-hint">Ollama: http://localhost:11434 | LM Studio: http://localhost:1234/v1 | vLLM: http://localhost:8000/v1</small>
                     </div>
                     <div class="form-group">
-                        <label for="model-name">Model Name:</label>
-                        <input type="text" id="model-name" placeholder="gpt-4, claude-3, etc.">
-                    </div>
-                    <div class="form-group">
-                        <label for="local-model-path">Local Model Path:</label>
+                        <label for="local-model-path">Local Model Path (optional):</label>
                         <input type="text" id="local-model-path" placeholder="/path/to/model">
                     </div>
                     <div class="form-group">
                         <label for="agent-server-url">Agent Server URL:</label>
                         <input type="text" id="agent-server-url" placeholder="ws://localhost:8765">
                     </div>
+                    <div class="form-group github-config">
+                        <h4>GitHub Integration (Optional)</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="github-token">GitHub Token:</label>
+                                <input type="password" id="github-token" placeholder="ghp_...">
+                                <small class="form-hint">Create a token with repo scope at github.com/settings/tokens</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="github-repo">Repository (owner/repo):</label>
+                                <input type="text" id="github-repo" placeholder="username/repo-name">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="github-branch">Branch:</label>
+                            <input type="text" id="github-branch" placeholder="main" value="main">
+                        </div>
+                    </div>
+                    <div class="form-group encoding-config">
+                        <h4>File Encoding & Formatting</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="file-encoding">Default Encoding:</label>
+                                <select id="file-encoding">
+                                    <option value="utf-8">UTF-8</option>
+                                    <option value="utf-8-bom">UTF-8 with BOM</option>
+                                    <option value="latin1">Latin-1 (ISO-8859-1)</option>
+                                    <option value="ascii">ASCII</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="auto-format">Auto-format on Save:</label>
+                                <select id="auto-format">
+                                    <option value="false">Disabled</option>
+                                    <option value="true">Enabled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="line-endings">Line Endings:</label>
+                                <select id="line-endings">
+                                    <option value="lf">LF (Unix/Linux/macOS)</option>
+                                    <option value="crlf">CRLF (Windows)</option>
+                                    <option value="cr">CR (Classic Mac)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tab-size">Tab Size:</label>
+                                <input type="number" id="tab-size" min="1" max="8" value="4">
+                            </div>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button class="action-btn" id="cancel-config">Cancel</button>
                 <button class="action-btn primary" id="save-config">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GitHub Connect Modal -->
+    <div class="modal" id="github-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🐙 GitHub Connection</h3>
+                <button class="close-btn" id="close-github-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="github-connect-form">
+                    <div class="form-group">
+                        <label for="gh-token">GitHub Personal Access Token:</label>
+                        <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx">
+                        <small class="form-hint">Generate at: <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="gh-repo">Repository URL or owner/repo:</label>
+                        <input type="text" id="gh-repo" placeholder="https://github.com/username/repo or username/repo">
+                    </div>
+                    <div class="form-group">
+                        <label for="gh-branch">Branch:</label>
+                        <input type="text" id="gh-branch" value="main">
+                    </div>
+                    <div class="github-status" id="github-status"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn" id="cancel-github">Cancel</button>
+                <button class="action-btn primary" id="connect-github">Connect</button>
+                <button class="action-btn" id="disconnect-github" style="display: none;">Disconnect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Attachment Modal -->
+    <div class="modal" id="file-attach-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📎 Attach Files to Chat</h3>
+                <button class="close-btn" id="close-attach-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="file-drop-zone" id="file-drop-zone">
+                    <p>Drag & drop files here or click to browse</p>
+                    <input type="file" id="file-input" multiple style="display: none;">
+                </div>
+                <div class="attached-files-list" id="attached-files-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn" id="cancel-attach">Cancel</button>
+                <button class="action-btn primary" id="confirm-attach">Attach Files</button>
             </div>
         </div>
     </div>

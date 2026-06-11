@@ -6,6 +6,12 @@ let openFiles = [];
 let activeFile = null;
 let modelConfig = null;
 let isConnectedToAgent = false;
+let attachedFiles = []; // Files attached to chat
+let githubConfig = null; // GitHub connection config
+let fileEncoding = 'utf-8';
+let autoFormat = false;
+let lineEndings = 'lf';
+let tabSize = 4;
 
 // DOM Elements
 const fileTree = document.getElementById('file-tree');
@@ -15,6 +21,10 @@ const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 const configModal = document.getElementById('config-modal');
 const taskList = document.getElementById('task-list');
+const githubModal = document.getElementById('github-modal');
+const fileAttachModal = document.getElementById('file-attach-modal');
+const attachedFilesContainer = document.getElementById('attached-files');
+const attachedFilesList = document.getElementById('attached-files-list');
 
 // Initialize application
 async function init() {
@@ -27,7 +37,6 @@ async function init() {
 function setupEventListeners() {
     // Window controls
     document.getElementById('minimize-btn').addEventListener('click', () => {
-        // Electron window minimize would be handled here
         console.log('Minimize window');
     });
 
@@ -43,6 +52,12 @@ function setupEventListeners() {
     document.getElementById('open-folder-btn').addEventListener('click', openFolder);
     document.getElementById('refresh-files').addEventListener('click', refreshFileTree);
     document.getElementById('new-file-btn').addEventListener('click', createNewFile);
+    document.getElementById('new-folder-btn')?.addEventListener('click', createNewFolder);
+
+    // GitHub operations
+    document.getElementById('github-sync')?.addEventListener('click', showGithubModal);
+    document.getElementById('git-pull')?.addEventListener('click', gitPull);
+    document.getElementById('git-push')?.addEventListener('click', gitPush);
 
     // Editor events
     codeEditor.addEventListener('input', handleEditorInput);
@@ -55,14 +70,33 @@ function setupEventListeners() {
     document.getElementById('configure-model').addEventListener('click', showConfigModal);
     document.getElementById('agent-settings').addEventListener('click', showConfigModal);
     document.getElementById('toggle-agent-panel').addEventListener('click', toggleAgentPanel);
+    document.getElementById('attach-file-btn')?.addEventListener('click', showAttachFileModal);
+    document.getElementById('attach-file-chat')?.addEventListener('click', showAttachFileModal);
 
     // Modal
     document.getElementById('close-modal').addEventListener('click', hideConfigModal);
     document.getElementById('cancel-config').addEventListener('click', hideConfigModal);
     document.getElementById('save-config').addEventListener('click', saveModelConfig);
 
+    // GitHub modal
+    document.getElementById('close-github-modal')?.addEventListener('click', hideGithubModal);
+    document.getElementById('cancel-github')?.addEventListener('click', hideGithubModal);
+    document.getElementById('connect-github')?.addEventListener('click', connectGithub);
+    document.getElementById('disconnect-github')?.addEventListener('click', disconnectGithub);
+
+    // File attach modal
+    document.getElementById('close-attach-modal')?.addEventListener('click', hideAttachFileModal);
+    document.getElementById('cancel-attach')?.addEventListener('click', hideAttachFileModal);
+    document.getElementById('confirm-attach')?.addEventListener('click', confirmAttachFiles);
+    document.getElementById('file-drop-zone')?.addEventListener('click', triggerFileInput);
+    document.getElementById('file-input')?.addEventListener('change', handleFileSelect);
+
     // Model type change
     document.getElementById('model-type').addEventListener('change', handleModelTypeChange);
+
+    // Drag and drop for files in chat
+    chatInput?.addEventListener('dragover', handleDragOver);
+    chatInput?.addEventListener('drop', handleDrop);
 
     // Listen for agent messages
     ipcRenderer.on('agent-message', (event, message) => {
@@ -509,37 +543,266 @@ function showError(message) {
     addChatMessage('system', `❌ ${message}`);
 }
 
+// File Tree with nested structure
+async function loadFileTree(dirPath, parentElement = fileTree, level = 0) {
+    try {
+        const result = await ipcRenderer.invoke('list-directory', dirPath);
+        if (result.success) {
+            renderFileTree(result.items, dirPath, parentElement);
+        }
+    } catch (error) {
+        showError('Failed to load file tree: ' + error.message);
+    }
+}
+
+function renderFileTree(items, parentPath = '', container = fileTree) {
+    container.innerHTML = '';
+    
+    items.forEach(item => {
+        const fileElement = document.createElement('div');
+        fileElement.className = `file-item ${item.isDirectory ? 'folder-item collapsed' : ''}`;
+        fileElement.innerHTML = `\n            <span class="file-icon">${item.isDirectory ? '📁' : getFileIcon(item.name)}</span>\n            <span>${item.name}</span>\n        `;
+        
+        fileElement.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (item.isDirectory) {
+                const isExpanded = fileElement.classList.contains('expanded');
+                if (isExpanded) {
+                    fileElement.classList.remove('expanded');
+                    fileElement.classList.add('collapsed');
+                    const childTree = fileElement.querySelector('.file-tree');
+                    if (childTree) childTree.remove();
+                } else {
+                    fileElement.classList.remove('collapsed');
+                    fileElement.classList.add('expanded');
+                    const childTreeContainer = document.createElement('div');
+                    childTreeContainer.className = 'file-tree';
+                    childTreeContainer.innerHTML = '<div class="empty-state">Loading...</div>';
+                    fileElement.appendChild(childTreeContainer);
+                    await loadFileTree(item.path, childTreeContainer);
+                }
+            } else {
+                openFile(item.path);
+            }
+        });
+        
+        container.appendChild(fileElement);
+    });
+}
+
+async function createNewFolder() {
+    if (!currentProject) {
+        showError('Please open a folder first');
+        return;
+    }
+    
+    const folderName = prompt('Enter folder name:');
+    if (folderName) {
+        const folderPath = `${currentProject}/${folderName}`;
+        const result = await ipcRenderer.invoke('create-folder', folderPath);
+        if (result.success) {
+            await loadFileTree(currentProject);
+        } else {
+            showError('Failed to create folder: ' + result.error);
+        }
+    }
+}
+
+// GitHub Functions
+function showGithubModal() {
+    if (githubModal) githubModal.classList.add('active');
+}
+
+function hideGithubModal() {
+    if (githubModal) githubModal.classList.remove('active');
+}
+
+async function connectGithub() {
+    const token = document.getElementById('gh-token').value;
+    const repo = document.getElementById('gh-repo').value;
+    const branch = document.getElementById('gh-branch').value;
+    const statusDiv = document.getElementById('github-status');
+    
+    if (!token || !repo) {
+        statusDiv.className = 'github-status error';
+        statusDiv.textContent = 'Token and repository are required';
+        return;
+    }
+    
+    statusDiv.className = 'github-status loading';
+    statusDiv.textContent = 'Connecting...';
+    
+    try {
+        githubConfig = { token, repo, branch };
+        await ipcRenderer.invoke('save-github-config', githubConfig);
+        
+        const githubSection = document.getElementById('github-section');
+        const repoName = document.getElementById('github-repo-name');
+        if (githubSection && repoName) {
+            githubSection.style.display = 'block';
+            repoName.textContent = repo;
+        }
+        
+        statusDiv.className = 'github-status success';
+        statusDiv.textContent = 'Connected successfully!';
+        hideGithubModal();
+    } catch (error) {
+        statusDiv.className = 'github-status error';
+        statusDiv.textContent = 'Connection failed: ' + error.message;
+    }
+}
+
+async function disconnectGithub() {
+    githubConfig = null;
+    await ipcRenderer.invoke('save-github-config', null);
+    
+    const githubSection = document.getElementById('github-section');
+    if (githubSection) githubSection.style.display = 'none';
+    
+    hideGithubModal();
+}
+
+async function gitPull() {
+    if (!githubConfig) {
+        showError('GitHub not configured');
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('git-pull', githubConfig);
+        if (result.success) {
+            addChatMessage('system', '✅ Git pull successful: ' + result.message);
+            await loadFileTree(currentProject);
+        } else {
+            showError('Git pull failed: ' + result.error);
+        }
+    } catch (error) {
+        showError('Git pull error: ' + error.message);
+    }
+}
+
+async function gitPush() {
+    if (!githubConfig) {
+        showError('GitHub not configured');
+        return;
+    }
+    
+    const commitMessage = prompt('Enter commit message:');
+    if (!commitMessage) return;
+    
+    try {
+        const result = await ipcRenderer.invoke('git-push', { ...githubConfig, commitMessage });
+        if (result.success) {
+            addChatMessage('system', '✅ Git push successful: ' + result.message);
+        } else {
+            showError('Git push failed: ' + result.error);
+        }
+    } catch (error) {
+        showError('Git push error: ' + error.message);
+    }
+}
+
+// File Attachment Functions
+function showAttachFileModal() {
+    if (fileAttachModal) fileAttachModal.classList.add('active');
+    renderAttachedFilesList();
+}
+
+function hideAttachFileModal() {
+    if (fileAttachModal) fileAttachModal.classList.remove('active');
+}
+
+function triggerFileInput() {
+    document.getElementById('file-input').click();
+}
+
+function handleFileSelect(event) {
+    const files = Array.from(event.target.files);
+    addFilesToAttach(files);
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dropZone = document.getElementById('file-drop-zone');
+    if (dropZone) dropZone.classList.add('drag-over');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dropZone = document.getElementById('file-drop-zone');
+    if (dropZone) dropZone.classList.remove('drag-over');
+    
+    const files = Array.from(e.dataTransfer.files);
+    addFilesToAttach(files);
+}
+
+function addFilesToAttach(files) {
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            attachedFiles.push({
+                name: file.name,
+                content: e.target.result,
+                type: file.type
+            });
+            renderAttachedFilesList();
+        };
+        reader.readAsText(file);
+    });
+}
+
+function renderAttachedFilesList() {
+    if (!attachedFilesList) return;
+    
+    attachedFilesList.innerHTML = '';
+    attachedFiles.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = 'attached-file-item';
+        item.innerHTML = `\n            <span>📄 ${file.name}</span>\n            <span class="remove-file" onclick="removeAttachedFile(${index})">×</span>\n        `;
+        attachedFilesList.appendChild(item);
+    });
+}
+
+function removeAttachedFile(index) {
+    attachedFiles.splice(index, 1);
+    renderAttachedFilesList();
+}
+
+async function confirmAttachFiles() {
+    renderAttachedFilesInChat();
+    hideAttachFileModal();
+}
+
+function renderAttachedFilesInChat() {
+    if (!attachedFilesContainer) return;
+    
+    attachedFilesContainer.innerHTML = '';
+    attachedFiles.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = 'attached-file-item';
+        item.innerHTML = `\n            <span>📄 ${file.name}</span>\n            <span class="remove-file" onclick="removeAttachedFileFromChat(${index})">×</span>\n        `;
+        attachedFilesContainer.appendChild(item);
+    });
+}
+
+function removeAttachedFileFromChat(index) {
+    attachedFiles.splice(index, 1);
+    renderAttachedFilesInChat();
+}
+
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-    // Ctrl+S / Cmd+S - Save
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         saveCurrentFile();
     }
-    
-    // Ctrl+P / Cmd+P - Quick file search (placeholder)
     if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
         console.log('Quick file search');
     }
-    
-    // Ctrl+` - Toggle terminal (placeholder)
-    if ((e.ctrlKey || e.metaKey) && e.key === '`') {
-        e.preventDefault();
-        console.log('Toggle terminal');
-    }
 });
-
-// Auto-save functionality
-setInterval(() => {
-    openFiles.forEach(file => {
-        if (file.isModified) {
-            ipcRenderer.invoke('write-file', file.path, file.content);
-            file.isModified = false;
-        }
-    });
-    renderTabs();
-}, 30000); // Auto-save every 30 seconds
 
 // Initialize on load
 init();
