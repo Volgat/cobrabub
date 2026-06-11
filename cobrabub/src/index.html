@@ -61,11 +61,13 @@
                 <!-- Editor Area -->
                 <div class="editor-container">
                     <div id="editor-wrapper">
-                        <textarea id="code-editor" placeholder="Open a file to start editing..." spellcheck="false"></textarea>
+                        <div id="line-numbers"></div>
+                        <textarea id="code-editor" placeholder="Open a file to start editing..." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
                     </div>
                     <div class="editor-status" id="editor-status">
                         <span id="cursor-position">Ln 1, Col 1</span>
                         <span id="file-language">Plain Text</span>
+                        <span id="save-indicator"></span>
                     </div>
                 </div>
             </main>
@@ -84,8 +86,10 @@
                 <!-- Model Selection -->
                 <div class="model-section">
                     <select id="model-type">
-                        <option value="openai">OpenAI API</option>
-                        <option value="anthropic">Anthropic API</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="gemini">Google Gemini</option>
+                        <option value="qwen">Qwen (Alibaba)</option>
                         <option value="ollama">Ollama (Local)</option>
                         <option value="lmstudio">LM Studio</option>
                         <option value="vllm">vLLM</option>
@@ -146,8 +150,10 @@
                         <div class="form-group">
                             <label for="model-type-config">Model Type:</label>
                             <select id="model-type-config">
-                                <option value="openai">OpenAI API</option>
-                                <option value="anthropic">Anthropic API</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic (Claude)</option>
+                                <option value="gemini">Google Gemini</option>
+                                <option value="qwen">Qwen (Alibaba)</option>
                                 <option value="ollama">Ollama (Local)</option>
                                 <option value="lmstudio">LM Studio</option>
                                 <option value="vllm">vLLM</option>
@@ -156,18 +162,23 @@
                         </div>
                         <div class="form-group">
                             <label for="model-name">Model Name:</label>
-                            <input type="text" id="model-name" placeholder="gpt-4, claude-3, llama2, etc.">
+                            <input type="text" id="model-name" placeholder="gpt-4, claude-3, gemini-pro, qwen-max, llama2, etc.">
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="api-key">API Key:</label>
                         <input type="password" id="api-key" placeholder="Enter your API key">
-                        <small class="form-hint">Required for OpenAI, Anthropic. Optional for local models.</small>
+                        <small class="form-hint">Required for cloud APIs. Optional for local models.</small>
                     </div>
                     <div class="form-group">
-                        <label for="base-url">Base URL (for custom/local APIs):</label>
-                        <input type="text" id="base-url" placeholder="http://localhost:11434 (Ollama), http://localhost:1234/v1 (LM Studio)">
-                        <small class="form-hint">Ollama: http://localhost:11434 | LM Studio: http://localhost:1234/v1 | vLLM: http://localhost:8000/v1</small>
+                        <label for="base-url">Base URL:</label>
+                        <input type="text" id="base-url" placeholder="Auto-filled for predefined providers">
+                        <small class="form-hint" id="base-url-hint">Select a model type to see default URL</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="api-endpoint">API Endpoint:</label>
+                        <input type="text" id="api-endpoint" placeholder="/v1/chat/completions">
+                        <small class="form-hint" id="endpoint-hint">Endpoint path for API calls</small>
                     </div>
                     <div class="form-group">
                         <label for="local-model-path">Local Model Path (optional):</label>

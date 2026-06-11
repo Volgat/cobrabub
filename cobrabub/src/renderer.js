@@ -13,6 +13,50 @@ let autoFormat = false;
 let lineEndings = 'lf';
 let tabSize = 4;
 
+// Predefined model configurations
+const MODEL_PRESETS = {
+    openai: {
+        baseUrl: 'https://api.openai.com/v1',
+        endpoint: '/v1/chat/completions',
+        defaultModel: 'gpt-4'
+    },
+    anthropic: {
+        baseUrl: 'https://api.anthropic.com',
+        endpoint: '/v1/messages',
+        defaultModel: 'claude-3-sonnet-20240229'
+    },
+    gemini: {
+        baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+        endpoint: '/models/gemini-pro:generateContent',
+        defaultModel: 'gemini-pro'
+    },
+    qwen: {
+        baseUrl: 'https://dashscope.aliyuncs.com/api/v1',
+        endpoint: '/services/aigc/text-generation/generation',
+        defaultModel: 'qwen-max'
+    },
+    ollama: {
+        baseUrl: 'http://localhost:11434',
+        endpoint: '/api/generate',
+        defaultModel: 'llama2'
+    },
+    lmstudio: {
+        baseUrl: 'http://localhost:1234/v1',
+        endpoint: '/v1/chat/completions',
+        defaultModel: 'local-model'
+    },
+    vllm: {
+        baseUrl: 'http://localhost:8000/v1',
+        endpoint: '/v1/chat/completions',
+        defaultModel: 'meta-llama/Llama-2-7b-chat-hf'
+    },
+    custom: {
+        baseUrl: '',
+        endpoint: '/v1/chat/completions',
+        defaultModel: 'custom-model'
+    }
+};
+
 // DOM Elements
 const fileTree = document.getElementById('file-tree');
 const codeEditor = document.getElementById('code-editor');
@@ -93,6 +137,10 @@ function setupEventListeners() {
 
     // Model type change
     document.getElementById('model-type').addEventListener('change', handleModelTypeChange);
+    document.getElementById('model-type-config')?.addEventListener('change', () => {
+        const modelType = document.getElementById('model-type-config').value;
+        updateConfigModalForModelType(modelType);
+    });
 
     // Drag and drop for files in chat
     chatInput?.addEventListener('dragover', handleDragOver);
@@ -192,6 +240,8 @@ async function openFile(filePath) {
             codeEditor.value = result.content;
             updateFileLanguage(filePath);
             updateCursorPosition();
+            updateLineNumbers();
+            setupScrollSync();
         } else {
             showError('Failed to open file: ' + result.error);
         }
@@ -278,23 +328,111 @@ async function handleEditorInput() {
         activeFile.content = codeEditor.value;
         activeFile.isModified = true;
         renderTabs();
+        updateLineNumbers();
     }
 }
 
 async function saveCurrentFile() {
     if (!activeFile) return;
     
+    // Show saving indicator
+    const saveIndicator = document.getElementById('save-indicator');
+    if (saveIndicator) {
+        saveIndicator.textContent = 'Saving...';
+        saveIndicator.className = 'saving visible';
+    }
+    
     try {
-        const result = await ipcRenderer.invoke('write-file', activeFile.path, activeFile.content);
+        // Apply auto-formatting if enabled
+        let contentToSave = activeFile.content;
+        if (autoFormat && activeFile.path) {
+            contentToSave = await formatCode(contentToSave, activeFile.path);
+        }
+        
+        // Apply encoding and line endings
+        contentToSave = applyEncodingAndLineEndings(contentToSave);
+        
+        const result = await ipcRenderer.invoke('write-file', activeFile.path, contentToSave);
         if (result.success) {
             activeFile.isModified = false;
+            activeFile.content = contentToSave;
+            codeEditor.value = contentToSave;
             renderTabs();
+            
+            // Show saved indicator
+            if (saveIndicator) {
+                saveIndicator.textContent = 'Saved ✓';
+                saveIndicator.className = 'saved visible';
+                setTimeout(() => {
+                    saveIndicator.className = '';
+                }, 2000);
+            }
         } else {
             showError('Failed to save file: ' + result.error);
+            if (saveIndicator) saveIndicator.className = '';
         }
     } catch (error) {
         showError('Failed to save file: ' + error.message);
+        if (saveIndicator) saveIndicator.className = '';
     }
+}
+
+function updateLineNumbers() {
+    const lineNumbersEl = document.getElementById('line-numbers');
+    if (!lineNumbersEl) return;
+    
+    const lines = codeEditor.value.split('\n').length;
+    const lineHeight = 22.4; // 14px font-size * 1.6 line-height
+    lineNumbersEl.style.height = `${lines * lineHeight}px`;
+    
+    let lineNumbersHtml = '';
+    for (let i = 1; i <= lines; i++) {
+        lineNumbersHtml += `<div>${i}</div>`;
+    }
+    lineNumbersEl.innerHTML = lineNumbersHtml;
+}
+
+// Sync scroll between line numbers and editor
+function setupScrollSync() {
+    const lineNumbersEl = document.getElementById('line-numbers');
+    if (lineNumbersEl && codeEditor) {
+        codeEditor.addEventListener('scroll', () => {
+            lineNumbersEl.scrollTop = codeEditor.scrollTop;
+        });
+    }
+}
+
+async function formatCode(code, filePath) {
+    // Simple formatting based on file type
+    const ext = filePath.split('.').pop().toLowerCase();
+    
+    // Basic formatting rules
+    let formatted = code;
+    
+    // Remove trailing whitespace
+    if (['js', 'jsx', 'ts', 'tsx', 'py', 'java', 'cpp', 'c', 'go', 'rs'].includes(ext)) {
+        formatted = formatted.split('\n').map(line => line.trimEnd()).join('\n');
+    }
+    
+    // Ensure single newline at end of file
+    formatted = formatted.replace(/\n*$/, '\n');
+    
+    return formatted;
+}
+
+function applyEncodingAndLineEndings(content) {
+    // Apply line endings
+    let result = content;
+    if (lineEndings === 'crlf') {
+        result = result.replace(/\n/g, '\r\n');
+    } else if (lineEndings === 'cr') {
+        result = result.replace(/\n/g, '\r');
+    }
+    
+    // Note: UTF-8 BOM handling would require binary write in main.js
+    // For now, we just track the setting
+    
+    return result;
 }
 
 function updateCursorPosition() {
@@ -352,11 +490,61 @@ function updateModelUI() {
 
 function handleModelTypeChange() {
     const modelType = document.getElementById('model-type').value;
-    // Could adjust UI based on model type
+    updateConfigModalForModelType(modelType);
+}
+
+function updateConfigModalForModelType(modelType) {
+    const preset = MODEL_PRESETS[modelType];
+    if (preset) {
+        document.getElementById('base-url').value = preset.baseUrl;
+        document.getElementById('api-endpoint').value = preset.endpoint;
+        document.getElementById('model-name').placeholder = `Ex: ${preset.defaultModel}`;
+        
+        // Update hints
+        const baseUrlHint = document.getElementById('base-url-hint');
+        const endpointHint = document.getElementById('endpoint-hint');
+        if (baseUrlHint) {
+            baseUrlHint.textContent = getDefaultUrlHint(modelType);
+        }
+        if (endpointHint) {
+            endpointHint.textContent = getEndpointHint(modelType);
+        }
+    }
+}
+
+function getDefaultUrlHint(modelType) {
+    const hints = {
+        openai: 'OpenAI API base URL',
+        anthropic: 'Anthropic API base URL',
+        gemini: 'Google Gemini API base URL',
+        qwen: 'Alibaba DashScope API base URL',
+        ollama: 'http://localhost:11434',
+        lmstudio: 'http://localhost:1234/v1',
+        vllm: 'http://localhost:8000/v1',
+        custom: 'Enter your custom API base URL'
+    };
+    return hints[modelType] || '';
+}
+
+function getEndpointHint(modelType) {
+    const hints = {
+        openai: '/v1/chat/completions',
+        anthropic: '/v1/messages',
+        gemini: '/models/gemini-pro:generateContent',
+        qwen: '/services/aigc/text-generation/generation',
+        ollama: '/api/generate or /v1/chat/completions',
+        lmstudio: '/v1/chat/completions',
+        vllm: '/v1/chat/completions',
+        custom: 'Enter your API endpoint path'
+    };
+    return hints[modelType] || '';
 }
 
 function showConfigModal() {
     configModal.classList.add('active');
+    // Initialize with current model type settings
+    const currentModelType = document.getElementById('model-type-config').value;
+    updateConfigModalForModelType(currentModelType);
 }
 
 function hideConfigModal() {
@@ -365,13 +553,24 @@ function hideConfigModal() {
 
 async function saveModelConfig() {
     const config = {
-        type: document.getElementById('model-type').value,
+        type: document.getElementById('model-type-config').value,
         apiKey: document.getElementById('api-key').value,
         baseUrl: document.getElementById('base-url').value,
+        endpoint: document.getElementById('api-endpoint').value,
         modelName: document.getElementById('model-name').value,
         localModelPath: document.getElementById('local-model-path').value,
-        agentServerUrl: document.getElementById('agent-server-url').value
+        agentServerUrl: document.getElementById('agent-server-url').value,
+        fileEncoding: document.getElementById('file-encoding')?.value || 'utf-8',
+        autoFormat: document.getElementById('auto-format')?.value === 'true',
+        lineEndings: document.getElementById('line-endings')?.value || 'lf',
+        tabSize: parseInt(document.getElementById('tab-size')?.value) || 4
     };
+    
+    // Save encoding settings
+    fileEncoding = config.fileEncoding;
+    autoFormat = config.autoFormat;
+    lineEndings = config.lineEndings;
+    tabSize = config.tabSize;
     
     try {
         await ipcRenderer.invoke('save-model-config', config);

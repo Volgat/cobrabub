@@ -6,12 +6,6 @@ node_modules/
 dist/
 build/
 *.js.map
-*.css.map
-
-# Logs and temp files
-*.log
-*.tmp
-*.swp
 
 # Environment
 .env
@@ -22,24 +16,42 @@ build/
 .vscode/
 .idea/
 
+# Logs
+*.log
+
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Coverage
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
 coverage/
 htmlcov/
-.coverage
+*.coverage
+
+# Distribution / packaging
+.Python
+*.egg-info/
+.installed.cfg
+*.egg
 
 # MyPy
 .mypy_cache/
 
-# PyTest
+# Pytest
 .pytest_cache/
 
-# Compressed files
+# Compression
 *.zip
 *.gz
 *.tar
