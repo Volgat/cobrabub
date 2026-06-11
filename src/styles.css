@@ -9,6 +9,7 @@
   --bg-element-hover: rgba(255, 255, 255, 0.07);
   --border: rgba(255, 255, 255, 0.04);
   --border-focus: rgba(124, 106, 247, 0.4);
+  --bg-editor: #0a0a14;
   
   --accent: #7c6af7;
   --accent-pink: #ec4899;
@@ -98,6 +99,7 @@ select, input, textarea {
   color: inherit;
 }
 
+
 /* Custom Premium Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -129,7 +131,7 @@ select, input, textarea {
   display: flex;
   align-items: center;
   height: var(--titlebar-h);
-  background: rgba(7, 7, 12, 0.9);
+  background: var(--bg-glass-heavy);
   border-bottom: 1px solid var(--border);
   -webkit-app-region: drag;
   flex-shrink: 0;
@@ -184,6 +186,8 @@ select, input, textarea {
   padding: 0 12px;
   gap: 4px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 90;
 }
 .tool-btn {
   padding: 6px 12px;
@@ -484,7 +488,7 @@ select, input, textarea {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: rgba(7, 7, 12, 0.4);
+  background: var(--bg-editor) !important;
   min-height: 100px;
 }
 #editor-wrapper {
@@ -495,8 +499,9 @@ select, input, textarea {
 }
 #line-numbers {
   width: 56px;
-  background: rgba(7, 7, 12, 0.6);
+  background: var(--bg-editor) !important;
   border-right: 1px solid var(--border);
+  filter: brightness(0.92);
   color: var(--text-dark);
   font-family: var(--mono);
   font-size: var(--editor-fs);
@@ -539,12 +544,18 @@ select, input, textarea {
   pointer-events: none;
   z-index: 1;
   tab-size: 2;
+  color: var(--editor-text-custom, var(--text));
 }
 #highlight-layer code {
   font-family: inherit;
   font-size: inherit;
   background: transparent;
   padding: 0;
+  color: var(--editor-text-custom, var(--text));
+}
+.hljs {
+  background: transparent !important;
+  color: var(--editor-text-custom, var(--text)) !important;
 }
 #code-editor {
   position: absolute;
@@ -558,7 +569,7 @@ select, input, textarea {
   font-size: var(--editor-fs);
   line-height: var(--editor-lh);
   background: transparent;
-  color: transparent;
+  color: transparent !important;
   caret-color: var(--accent-pink);
   border: none;
   outline: none;
@@ -567,7 +578,7 @@ select, input, textarea {
   white-space: pre;
   overflow: auto;
   tab-size: 2;
-  -webkit-text-fill-color: transparent;
+  -webkit-text-fill-color: transparent !important;
 }
 #code-editor::placeholder {
   color: var(--text-dark);
@@ -1494,3 +1505,335 @@ select, input, textarea {
   background: var(--bg-element-hover);
   color: var(--text);
 }
+
+/* ─── Themes ─────────────────────────────────────────────────── */
+body.theme-cyber-purple {
+  --bg-deep: #07070c;
+  --bg-glass: rgba(14, 14, 28, 0.75);
+  --bg-glass-heavy: rgba(22, 22, 44, 0.85);
+  --accent: #7c6af7;
+  --accent-pink: #ec4899;
+  --accent-blue: #3b82f6;
+  --accent-gradient: linear-gradient(135deg, #7c6af7, #ec4899);
+  --accent-glow: 0 0 20px rgba(124, 106, 247, 0.35);
+  --text: #e2e2f0;
+  --text-muted: #94a3b8;
+  --border-focus: rgba(124, 106, 247, 0.4);
+  --accent-glow-before: rgba(124, 106, 247, 0.06);
+  --accent-glow-after: rgba(236, 72, 153, 0.05);
+  --bg-editor: #0c0c1b;
+}
+
+body.theme-midnight-blue {
+  --bg-deep: #020617;
+  --bg-glass: rgba(15, 23, 42, 0.75);
+  --bg-glass-heavy: rgba(30, 41, 59, 0.85);
+  --accent: #0ea5e9;
+  --accent-pink: #38bdf8;
+  --accent-blue: #2563eb;
+  --accent-gradient: linear-gradient(135deg, #0ea5e9, #2563eb);
+  --accent-glow: 0 0 20px rgba(14, 165, 233, 0.35);
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-focus: rgba(14, 165, 233, 0.4);
+  --accent-glow-before: rgba(14, 165, 233, 0.07);
+  --accent-glow-after: rgba(37, 99, 235, 0.05);
+  --bg-editor: #070c20;
+}
+
+body.theme-emerald-synth {
+  --bg-deep: #040d08;
+  --bg-glass: rgba(8, 24, 16, 0.75);
+  --bg-glass-heavy: rgba(12, 38, 25, 0.85);
+  --accent: #10b981;
+  --accent-pink: #34d399;
+  --accent-blue: #0284c7;
+  --accent-gradient: linear-gradient(135deg, #10b981, #059669);
+  --accent-glow: 0 0 20px rgba(16, 185, 129, 0.35);
+  --text: #ecfdf5;
+  --text-muted: #84a395;
+  --border-focus: rgba(16, 185, 129, 0.4);
+  --accent-glow-before: rgba(16, 185, 129, 0.07);
+  --accent-glow-after: rgba(52, 211, 153, 0.05);
+  --bg-editor: #05140b;
+}
+
+body.theme-amber-cyber {
+  --bg-deep: #0d0904;
+  --bg-glass: rgba(24, 18, 10, 0.75);
+  --bg-glass-heavy: rgba(38, 28, 15, 0.85);
+  --accent: #f59e0b;
+  --accent-pink: #fbbf24;
+  --accent-blue: #d97706;
+  --accent-gradient: linear-gradient(135deg, #f59e0b, #d97706);
+  --accent-glow: 0 0 20px rgba(245, 158, 11, 0.35);
+  --text: #fffbeb;
+  --text-muted: #bda38b;
+  --border-focus: rgba(245, 158, 11, 0.4);
+  --accent-glow-before: rgba(245, 158, 11, 0.07);
+  --accent-glow-after: rgba(217, 119, 6, 0.05);
+  --bg-editor: #130f0a;
+}
+
+body.theme-light-mode {
+  --bg-deep: #f8fafc;
+  --bg-glass: rgba(255, 255, 255, 0.75);
+  --bg-glass-heavy: rgba(241, 245, 249, 0.85);
+  --bg-element: rgba(0, 0, 0, 0.03);
+  --bg-element-hover: rgba(0, 0, 0, 0.06);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-focus: rgba(124, 106, 247, 0.5);
+  --accent: #6366f1;
+  --accent-pink: #db2777;
+  --accent-blue: #2563eb;
+  --accent-gradient: linear-gradient(135deg, #6366f1, #db2777);
+  --accent-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+  --text: #0f172a;
+  --text-muted: #475569;
+  --border-focus: rgba(99, 102, 241, 0.4);
+  --accent-glow-before: rgba(99, 102, 241, 0.04);
+  --accent-glow-after: rgba(219, 39, 119, 0.03);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --bg-editor: #ffffff;
+}
+
+/* ─── Lucide Icons Support ───────────────────────────────────── */
+svg.lucide {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2px;
+  stroke: currentColor;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: inline-block;
+  vertical-align: middle;
+}
+.tool-btn svg.lucide {
+  width: 15px;
+  height: 15px;
+}
+.dropdown-item svg.lucide {
+  width: 14px;
+  height: 14px;
+}
+
+/* ─── Git Dropdown Menu ──────────────────────────────────────── */
+#git-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1000;
+  min-width: 150px;
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  animation: modalIn 0.15s forwards;
+}
+#git-dropdown-menu.active {
+  display: block;
+}
+#git-dropdown-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#git-dropdown-menu .dropdown-item:hover {
+  background: var(--bg-element-hover);
+  color: var(--text);
+}
+
+/* ─── Android Dropdown Menu ───────────────────────────────────── */
+#android-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1000;
+  min-width: 190px;
+  background: var(--bg-glass-heavy);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  animation: modalIn 0.15s forwards;
+}
+#android-dropdown-menu.active {
+  display: block;
+}
+#android-dropdown-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#android-dropdown-menu .dropdown-item:hover {
+  background: var(--bg-element-hover);
+  color: var(--text);
+}
+
+/* ─── Modal Tabs ──────────────────────────────────────────────── */
+.modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
+}
+.modal-tab-btn {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.modal-tab-btn:hover {
+  background: var(--bg-element-hover);
+  color: var(--text);
+}
+.modal-tab-btn.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  background: rgba(255, 255, 255, 0.02);
+}
+.modal-tab-content {
+  display: none;
+}
+.modal-tab-content.active {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ─── Confirmation Modal ─────────────────────────────────────── */
+#confirm-modal .modal-content {
+  width: 440px;
+  border-left: 4px solid var(--accent);
+}
+#confirm-modal .modal-body {
+  padding: 24px 20px;
+}
+#confirm-modal .modal-footer {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Prompt Modal ───────────────────────────────────────────── */
+#prompt-modal .modal-content {
+  width: 440px;
+  border-left: 4px solid var(--accent);
+}
+#prompt-modal .modal-body {
+  padding: 24px 20px;
+}
+#prompt-modal .modal-footer {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Offline-First Syntax Highlighting Themes ────────────────── */
+
+/* Atom One Dark (applied to all dark themes) */
+body:not(.theme-light-mode) .hljs-comment,
+body:not(.theme-light-mode) .hljs-quote { color: #5c6370; font-style: italic; }
+body:not(.theme-light-mode) .hljs-doctag,
+body:not(.theme-light-mode) .hljs-formula,
+body:not(.theme-light-mode) .hljs-keyword { color: #c678dd; }
+body:not(.theme-light-mode) .hljs-deletion,
+body:not(.theme-light-mode) .hljs-name,
+body:not(.theme-light-mode) .hljs-section,
+body:not(.theme-light-mode) .hljs-selector-tag,
+body:not(.theme-light-mode) .hljs-subst { color: #e06c75; }
+body:not(.theme-light-mode) .hljs-literal { color: #56b6c2; }
+body:not(.theme-light-mode) .hljs-addition,
+body:not(.theme-light-mode) .hljs-attribute,
+body:not(.theme-light-mode) .hljs-meta .hljs-string,
+body:not(.theme-light-mode) .hljs-regexp,
+body:not(.theme-light-mode) .hljs-string { color: #98c379; }
+body:not(.theme-light-mode) .hljs-attr,
+body:not(.theme-light-mode) .hljs-number,
+body:not(.theme-light-mode) .hljs-selector-attr,
+body:not(.theme-light-mode) .hljs-selector-class,
+body:not(.theme-light-mode) .hljs-selector-pseudo,
+body:not(.theme-light-mode) .hljs-template-variable,
+body:not(.theme-light-mode) .hljs-type,
+body:not(.theme-light-mode) .hljs-variable { color: #d19a66; }
+body:not(.theme-light-mode) .hljs-bullet,
+body:not(.theme-light-mode) .hljs-link,
+body:not(.theme-light-mode) .hljs-meta,
+body:not(.theme-light-mode) .hljs-selector-id,
+body:not(.theme-light-mode) .hljs-symbol,
+body:not(.theme-light-mode) .hljs-title { color: #61aeee; }
+body:not(.theme-light-mode) .hljs-built_in,
+body:not(.theme-light-mode) .hljs-class .hljs-title,
+body:not(.theme-light-mode) .hljs-title.class_ { color: #e6c07b; }
+body:not(.theme-light-mode) .hljs-emphasis { font-style: italic; }
+body:not(.theme-light-mode) .hljs-strong { font-weight: 700; }
+body:not(.theme-light-mode) .hljs-link { text-decoration: underline; }
+
+/* Atom One Light (applied to light theme) */
+body.theme-light-mode .hljs-comment,
+body.theme-light-mode .hljs-quote { color: #a0a1a7; font-style: italic; }
+body.theme-light-mode .hljs-doctag,
+body.theme-light-mode .hljs-formula,
+body.theme-light-mode .hljs-keyword { color: #a626a4; }
+body.theme-light-mode .hljs-deletion,
+body.theme-light-mode .hljs-name,
+body.theme-light-mode .hljs-section,
+body.theme-light-mode .hljs-selector-tag,
+body.theme-light-mode .hljs-subst { color: #e45649; }
+body.theme-light-mode .hljs-literal { color: #0184bb; }
+body.theme-light-mode .hljs-addition,
+body.theme-light-mode .hljs-attribute,
+body.theme-light-mode .hljs-meta .hljs-string,
+body.theme-light-mode .hljs-regexp,
+body.theme-light-mode .hljs-string { color: #50a14f; }
+body.theme-light-mode .hljs-attr,
+body.theme-light-mode .hljs-number,
+body.theme-light-mode .hljs-selector-attr,
+body.theme-light-mode .hljs-selector-class,
+body.theme-light-mode .hljs-selector-pseudo,
+body.theme-light-mode .hljs-template-variable,
+body.theme-light-mode .hljs-type,
+body.theme-light-mode .hljs-variable { color: #986801; }
+body.theme-light-mode .hljs-bullet,
+body.theme-light-mode .hljs-link,
+body.theme-light-mode .hljs-meta,
+body.theme-light-mode .hljs-selector-id,
+body.theme-light-mode .hljs-symbol,
+body.theme-light-mode .hljs-title { color: #4078f2; }
+body.theme-light-mode .hljs-built_in,
+body.theme-light-mode .hljs-class .hljs-title,
+body.theme-light-mode .hljs-title.class_ { color: #c18401; }
+body.theme-light-mode .hljs-emphasis { font-style: italic; }
+body.theme-light-mode .hljs-strong { font-weight: 700; }
+body.theme-light-mode .hljs-link { text-decoration: underline; }
+
+

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-CobraBub Agent Server
-WebSocket-based server for handling AI agent tasks
+CobraBub Agent Servers
+WebSocket-based server for handling AI agent task
 Supports multiple LLM providers and local models
 """
 

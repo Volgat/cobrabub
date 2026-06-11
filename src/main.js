@@ -38,6 +38,14 @@ let modelConfig = {
   apiKey: '',
   modelName: 'claude-haiku-4-5',
   baseUrl: '',
+  theme: 'cyber-purple',
+  language: 'fr',
+  githubToken: '',
+  githubUser: '',
+  githubEmail: '',
+  androidAutoDetect: true,
+  androidAlwaysShow: true,
+  editorTextColor: ''
 };
 
 try {
@@ -525,7 +533,56 @@ ipcMain.handle('run-agent-task', async (event, { instruction, files, projectPath
 });
 
 // ─── GitHub ───────────────────────────────────────────────────────────────────
-ipcMain.handle('save-github-config', async () => ({ success: true }));
+ipcMain.handle('setup-git-credentials', async (event, config) => {
+  try {
+    const { execSync } = require('child_process');
+    const cwd = config.cwd || process.cwd();
+    
+    // Check if git repo
+    let isGit = false;
+    try {
+      execSync('git rev-parse --is-inside-work-tree', { cwd, stdio: 'ignore' });
+      isGit = true;
+    } catch (e) {}
+    
+    if (!isGit) {
+      return { success: false, error: 'Pas un dépôt Git valide ou dossier non initialisé.' };
+    }
+
+    if (config.githubUser) {
+      execSync(`git config user.name "${config.githubUser.replace(/"/g, '\\"')}"`, { cwd });
+    }
+    if (config.githubEmail) {
+      execSync(`git config user.email "${config.githubEmail.replace(/"/g, '\\"')}"`, { cwd });
+    }
+    
+    if (config.githubToken) {
+      let remoteUrl = '';
+      try {
+        remoteUrl = execSync('git remote get-url origin', { cwd, encoding: 'utf-8' }).trim();
+      } catch (e) {}
+
+      if (remoteUrl) {
+        let newRemoteUrl = remoteUrl;
+        if (remoteUrl.startsWith('https://')) {
+          const cleanUrl = remoteUrl.replace(/^https:\/\/([^@]+@)?/, '');
+          newRemoteUrl = `https://${config.githubToken}@${cleanUrl}`;
+        } else if (remoteUrl.startsWith('git@github.com:')) {
+          const match = remoteUrl.match(/^git@github\.com:(.+)$/);
+          if (match) {
+            newRemoteUrl = `https://${config.githubToken}@github.com/${match[1]}`;
+          }
+        }
+        if (newRemoteUrl !== remoteUrl) {
+          execSync(`git remote set-url origin "${newRemoteUrl}"`, { cwd });
+        }
+      }
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
 ipcMain.handle('git-pull', async (event, config) => {
   try {
     const { execSync } = require('child_process');
@@ -541,4 +598,72 @@ ipcMain.handle('git-push', async (event, config) => {
     });
     return { success: true, message: 'Push successful' };
   } catch (e) { return { success: false, error: e.message }; }
+});
+
+// ─── Android Emulators ────────────────────────────────────────────────────────
+ipcMain.handle('list-android-emulators', async () => {
+  try {
+    const { execSync } = require('child_process');
+    const output = execSync('android emulator list', { encoding: 'utf-8' });
+    const emulators = output.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    return { success: true, emulators };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('start-android-emulator', async (event, name) => {
+  try {
+    const { spawn } = require('child_process');
+    const shell = process.platform === 'win32' ? true : '/bin/bash';
+    const proc = spawn('android', ['emulator', 'start', name], {
+      shell,
+      detached: true,
+      stdio: 'ignore'
+    });
+    proc.unref();
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+function checkIsAndroidProject(dirPath, depth = 0) {
+  if (depth > 3) return false;
+  try {
+    const items = fs.readdirSync(dirPath, { withFileTypes: true });
+    const IGNORE = new Set(['node_modules', '.git', 'build', '.gradle', 'dist', 'out', 'venv', '.venv']);
+    
+    // First pass: check files in current directory
+    for (const item of items) {
+      if (item.isFile()) {
+        const name = item.name;
+        if (name === 'AndroidManifest.xml' || 
+            name === 'build.gradle' || 
+            name === 'build.gradle.kts' || 
+            name === 'settings.gradle' || 
+            name === 'settings.gradle.kts' ||
+            name === 'local.properties') {
+          return true;
+        }
+      }
+    }
+    
+    // Second pass: recursively check subdirectories
+    for (const item of items) {
+      if (item.isDirectory() && !IGNORE.has(item.name) && !item.name.startsWith('.')) {
+        if (checkIsAndroidProject(path.join(dirPath, item.name), depth + 1)) {
+          return true;
+        }
+      }
+    }
+  } catch (e) {}
+  return false;
+}
+
+ipcMain.handle('detect-android-project', async (event, dirPath) => {
+  if (!dirPath) return false;
+  return checkIsAndroidProject(dirPath);
 });

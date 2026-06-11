@@ -222,9 +222,10 @@ Les binaires seront générés dans le dossier `dist/`.
 
 ## 📝 Roadmap
 
-- [ ] Support du streaming des réponses
-- [ ] Terminal intégré
-- [ ] Git integration
+- [x] Support du streaming des réponses
+- [x] Terminal intégré (Exécution Cmd/Bash asynchrone)
+- [x] Intégration Git & GitHub (Pull/Push automatisé, PAT)
+- [x] Détecteur d'émulateur Android (AVD) automatique/permanent
 - [ ] Debugging avec IA
 - [ ] Multi-agents collaboratifs
 - [ ] Plugins et extensions

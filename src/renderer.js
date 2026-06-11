@@ -1,4 +1,5 @@
 const { ipcRenderer } = require('electron');
+const path = require('path');
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let currentProject = null;
@@ -14,6 +15,8 @@ let agentLoopActive = false;
 let currentAgentTurn = 0;
 const MAX_AGENT_TURNS = 10;
 let userIntervention = null;
+let confirmResolve = null; // Promise resolver for custom confirm modal
+let isEditorTextColorCustomized = false;
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const fileTreeEl     = document.getElementById('file-tree');
@@ -27,13 +30,271 @@ const taskList       = document.getElementById('task-list');
 const terminalOutput = document.getElementById('terminal-output');
 const terminalInput  = document.getElementById('terminal-input');
 
+// ─── Translations Dictionary ─────────────────────────────────────────────────
+const TRANSLATIONS = {
+  fr: {
+    settings: "Paramètres",
+    open_folder: "Ouvrir Dossier",
+    open_file: "Ouvrir Fichier",
+    save: "Sauvegarder",
+    new_file: "Nouveau",
+    new_folder: "Dossier",
+    terminal: "Terminal",
+    git_pull: "Git Pull",
+    git_push: "Git Push",
+    no_project: "Aucun projet",
+    open_folder_hint: "Ouvrez un dossier pour commencer",
+    status_hint: "Ctrl+S • Sauvegarder &nbsp;|&nbsp; Ctrl+` • Terminal",
+    terminal_title: "Terminal",
+    ai_agent: "Agent CobraBub",
+    config: "Config",
+    cap_tree: "Arborescence",
+    cap_write: "Écrire",
+    cap_cmd: "Commandes",
+    welcome_msg: "👋 <strong>CobraBub IDE</strong> — Ouvrez un dossier, configurez votre clé API, puis demandez à l'agent d'analyser votre projet ou d'écrire du code.",
+    attach_image: "Joindre une image",
+    capture_screen: "Capturer l'écran",
+    autonomous: "Autonome",
+    agent: "Agent",
+    active_tasks: "Tâches actives",
+    config_title: "Configuration",
+    tab_ai: "Modèles AI",
+    tab_appearance: "Apparence & Langues",
+    tab_github: "GitHub",
+    provider: "🔌 Fournisseur :",
+    api_url: "🌐 URL API :",
+    model: "🧠 Modèle :",
+    model_hint: "Choisissez dans la liste ↑ ou tapez un nom de modèle",
+    api_key: "🔑 Clé API :",
+    theme: "🎨 Thème Visuel :",
+    lang: "🌐 Langue :",
+    github_token: "🔑 Token d'Accès Personnel (PAT) :",
+    github_token_hint: "Token requis pour le push/pull automatique sans invite de commande.",
+    github_user: "👤 Nom d'utilisateur GitHub :",
+    github_email: "📧 Adresse e-mail GitHub :",
+    github_config_hint: "Sert à configurer localement Git pour vos commits.",
+    confirm_title: "Confirmation d'Action",
+    confirm_btn: "Confirmer",
+    cancel_btn: "Annuler",
+    error_open: "Impossible d'ouvrir: ",
+    error_no_project: "Ouvrez un dossier d'abord",
+    prompt_file_name: "Nom du fichier :",
+    prompt_folder_name: "Nom du dossier :",
+    confirm_unsaved: "Modifications non sauvegardées. Fermer quand même ?",
+    save_success: "Sauvegardé",
+    save_failed: "Sauvegarde échouée : ",
+    saving: "Sauvegarde…",
+    modified: "Non sauvegardé",
+    api_key_missing: "⚠️ Clé API manquante. Cliquez sur \"Configure\".",
+    git_success: "Succès",
+    git_failed: "Échec Git",
+    agent_stopped: "🛑 Tâche arrêtée par l'utilisateur.",
+    agent_success: "Agent terminé avec succès ✓",
+    agent_failed: "Agent arrêté",
+    agent_run_msg: "L'agent souhaite exécuter des actions :",
+    project_opened: "Projet ouvert",
+    config_saved: "Configuration enregistrée",
+    chat_input_placeholder: "Posez une question… (Entrée pour envoyer, Maj+Entrée pour nouvelle ligne)",
+    search_placeholder: "Rechercher (Ctrl+P)…",
+    term_input_placeholder: "Entrez une commande…",
+    prompt_commit_msg: "Message de commit :",
+    delete_confirm_msg: "Supprimer",
+    loading: "⏳ Chargement...",
+    empty_folder: "Dossier vide",
+    tour: "Tour",
+    android_detect: "Détecter/Rafraîchir",
+    android_no_avd: "Aucun détecté",
+    android_starting: "Démarrage de l'émulateur...",
+    android_success: "Émulateur lancé avec succès.",
+    tab_android: "Android",
+    android_autodetect: "Détecter automatiquement les projets Android",
+    android_always_show: "Toujours afficher le menu Android",
+    android_help: "Cette option permet d'analyser le dossier ouvert pour détecter des fichiers spécifiques (comme build.gradle ou AndroidManifest.xml). Si détecté, le menu Android s'active pour vous permettre de lancer un émulateur en un clic.",
+    editor_text_color: "✍️ Couleur du texte de l'éditeur :",
+    reset: "Réinitialiser"
+  },
+  en: {
+    settings: "Settings",
+    open_folder: "Open Folder",
+    open_file: "Open File",
+    save: "Save",
+    new_file: "New File",
+    new_folder: "New Folder",
+    terminal: "Terminal",
+    git_pull: "Git Pull",
+    git_push: "Git Push",
+    no_project: "No project",
+    open_folder_hint: "Open a folder to get started",
+    status_hint: "Ctrl+S • Save &nbsp;|&nbsp; Ctrl+` • Terminal",
+    terminal_title: "Terminal",
+    ai_agent: "CobraBub Agent",
+    config: "Config",
+    cap_tree: "File Tree",
+    cap_write: "Write Files",
+    cap_cmd: "Commands",
+    welcome_msg: "👋 <strong>CobraBub IDE</strong> — Open a folder, configure your API key, then ask the agent to analyze your project or write code.",
+    attach_image: "Attach an image",
+    capture_screen: "Capture screen",
+    autonomous: "Autonomous",
+    agent: "Agent",
+    active_tasks: "Active tasks",
+    config_title: "Configuration",
+    tab_ai: "AI Models",
+    tab_appearance: "Appearance & Lang",
+    tab_github: "GitHub",
+    provider: "🔌 Provider:",
+    api_url: "🌐 API URL:",
+    model: "🧠 Model:",
+    model_hint: "Choose from list ↑ or type a model name",
+    api_key: "🔑 API Key:",
+    theme: "🎨 Visual Theme:",
+    lang: "🌐 Language:",
+    github_token: "🔑 Personal Access Token (PAT):",
+    github_token_hint: "Token required for automatic pushes/pulls without password prompts.",
+    github_user: "👤 GitHub Username:",
+    github_email: "📧 GitHub E-mail:",
+    github_config_hint: "Used to locally configure Git for your commits.",
+    confirm_title: "Action Confirmation",
+    confirm_btn: "Confirm",
+    cancel_btn: "Cancel",
+    error_open: "Unable to open: ",
+    error_no_project: "Open a folder first",
+    prompt_file_name: "File name:",
+    prompt_folder_name: "Folder name:",
+    confirm_unsaved: "Unsaved changes. Close anyway?",
+    save_success: "Saved",
+    save_failed: "Save failed: ",
+    saving: "Saving…",
+    modified: "Unsaved",
+    api_key_missing: "⚠️ Missing API Key. Click \"Configure\".",
+    git_success: "Success",
+    git_failed: "Git Failed",
+    agent_stopped: "🛑 Task stopped by user.",
+    agent_success: "Agent completed successfully ✓",
+    agent_failed: "Agent stopped",
+    agent_run_msg: "The agent wants to execute actions:",
+    project_opened: "Project opened",
+    config_saved: "Configuration saved",
+    chat_input_placeholder: "Ask a question… (Enter to send, Shift+Enter for new line)",
+    search_placeholder: "Search files (Ctrl+P)…",
+    term_input_placeholder: "Type a command…",
+    prompt_commit_msg: "Commit message:",
+    delete_confirm_msg: "Delete",
+    loading: "⏳ Loading...",
+    empty_folder: "Folder is empty",
+    tour: "Turn",
+    android_detect: "Detect/Refresh",
+    android_no_avd: "None detected",
+    android_starting: "Starting emulator...",
+    android_success: "Emulator launched successfully.",
+    tab_android: "Android",
+    android_autodetect: "Automatically detect Android projects",
+    android_always_show: "Always show Android menu",
+    android_help: "This option analyzes the opened directory to detect specific files (like build.gradle or AndroidManifest.xml). If detected, the Android menu activates to let you launch an emulator in one click.",
+    editor_text_color: "✍️ Editor Text Color:",
+    reset: "Reset"
+  },
+  es: {
+    settings: "Configuración",
+    open_folder: "Abrir Carpeta",
+    open_file: "Abrir Archivo",
+    save: "Guardar",
+    new_file: "Nuevo Archivo",
+    new_folder: "Nueva Carpeta",
+    terminal: "Terminal",
+    git_pull: "Git Pull",
+    git_push: "Git Push",
+    no_project: "Ningún proyecto",
+    open_folder_hint: "Abra una carpeta para comenzar",
+    status_hint: "Ctrl+S • Guardar &nbsp;|&nbsp; Ctrl+` • Terminal",
+    terminal_title: "Terminal",
+    ai_agent: "Agente CobraBub",
+    config: "Config",
+    cap_tree: "Árbol de archivos",
+    cap_write: "Escribir",
+    cap_cmd: "Comandos",
+    welcome_msg: "👋 <strong>CobraBub IDE</strong> — Abra una carpeta, configure su clave API, luego pídale al agente que analice su proyecto o escriba código.",
+    attach_image: "Adjuntar imagen",
+    capture_screen: "Capturar pantalla",
+    autonomous: "Autónomo",
+    agent: "Agente",
+    active_tasks: "Tareas activas",
+    config_title: "Configuración",
+    tab_ai: "Modelos AI",
+    tab_appearance: "Apariencia e Idioma",
+    tab_github: "GitHub",
+    provider: "🔌 Proveedor:",
+    api_url: "🌐 URL de la API:",
+    model: "🧠 Modelo:",
+    model_hint: "Seleccione de la lista ↑ o escriba un modelo",
+    api_key: "🔑 Clave API:",
+    theme: "🎨 Tema Visual:",
+    lang: "🌐 Idioma:",
+    github_token: "🔑 Token de Acceso Personal (PAT):",
+    github_token_hint: "Token requerido para pushes/pulls automáticos sin solicitud de contraseña.",
+    github_user: "👤 Usuario de GitHub:",
+    github_email: "📧 Correo de GitHub:",
+    github_config_hint: "Sirve para configurar Git localmente para sus commits.",
+    confirm_title: "Confirmación de Acción",
+    confirm_btn: "Confirmar",
+    cancel_btn: "Cancelar",
+    error_open: "No se pudo abrir: ",
+    error_no_project: "Abra una carpeta primero",
+    prompt_file_name: "Nombre del archivo:",
+    prompt_folder_name: "Nombre de la carpeta:",
+    confirm_unsaved: "Cambios no guardados. ¿Cerrar de todos modos?",
+    save_success: "Guardado",
+    save_failed: "Fallo al guardar: ",
+    saving: "Guardando…",
+    modified: "No guardado",
+    api_key_missing: "⚠️ Falta clave API. Haga clic en \"Configure\".",
+    git_success: "Éxito",
+    git_failed: "Fallo Git",
+    agent_stopped: "🛑 Tarea detenida por el usuario.",
+    agent_success: "Agente terminado con éxito ✓",
+    agent_failed: "Agente detenido",
+    agent_run_msg: "El agente desea ejecutar acciones:",
+    project_opened: "Proyecto abierto",
+    config_saved: "Configuración guardada",
+    chat_input_placeholder: "Hacer una pregunta… (Enter para enviar, Shift+Enter para nueva línea)",
+    search_placeholder: "Buscar archivos (Ctrl+P)…",
+    term_input_placeholder: "Escriba un comando…",
+    prompt_commit_msg: "Mensaje de commit:",
+    delete_confirm_msg: "Eliminar",
+    loading: "⏳ Cargando...",
+    empty_folder: "Carpeta vacía",
+    tour: "Turno",
+    android_detect: "Detectar/Actualizar",
+    android_no_avd: "Ninguno detectado",
+    android_starting: "Iniciando emulador...",
+    android_success: "Emulador iniciado con éxito.",
+    tab_android: "Android",
+    android_autodetect: "Detectar automáticamente proyectos Android",
+    android_always_show: "Mostrar siempre el menú Android",
+    android_help: "Esta opción analiza la carpeta abierta para detectar archivos específicos (como build.gradle o AndroidManifest.xml). Si se detecta, el menú de Android se activa para permitirle iniciar un emulador con un solo clic.",
+    editor_text_color: "✍️ Color de texto del editor:",
+    reset: "Restablecer"
+  }
+};
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   await loadModelConfig();
+  
+  if (modelConfig) {
+    applyTheme(modelConfig.theme || 'cyber-purple');
+    applyLanguage(modelConfig.language || 'fr');
+  }
+
   setupEventListeners();
   setupKeyboardShortcuts();
   updateStatusBar();
   updateLineNumbers();
+  await updateAndroidDropdownVisibility();
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
 }
 
 // ─── Event Listeners ──────────────────────────────────────────────────────────
@@ -65,7 +326,8 @@ function setupEventListeners() {
   document.getElementById('run-agent').addEventListener('click', () => {
     if (agentLoopActive) {
       agentLoopActive = false;
-      addChatMessage('system', '🛑 Arrêt de l\'agent demandé...');
+      const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+      addChatMessage('system', `🛑 ${dict.agent_stopped}`);
     } else {
       runAgentTask();
     }
@@ -85,6 +347,96 @@ function setupEventListeners() {
     onModelTypeChange();
   });
 
+  const colorInput = document.getElementById('editor-text-color-input');
+  if (colorInput) {
+    colorInput.addEventListener('input', () => {
+      isEditorTextColorCustomized = true;
+      document.documentElement.style.setProperty('--editor-text-custom', colorInput.value);
+    });
+  }
+
+  const resetColorBtn = document.getElementById('btn-reset-editor-text-color');
+  if (resetColorBtn) {
+    resetColorBtn.addEventListener('click', async () => {
+      isEditorTextColorCustomized = false;
+      if (modelConfig) {
+        modelConfig.editorTextColor = '';
+        await ipcRenderer.invoke('save-model-config', modelConfig);
+      }
+      updateEditorTextColorUI();
+    });
+  }
+
+  // Config modal segmented tab switching
+  document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.modal-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.modal-tab-content').forEach(c => {
+        c.classList.remove('active');
+        c.style.display = 'none';
+      });
+      btn.classList.add('active');
+      const targetId = btn.dataset.tab;
+      const content = document.getElementById(targetId);
+      if (content) {
+        content.classList.add('active');
+        content.style.display = 'flex';
+      }
+    });
+  });
+
+  // Git Toolbar dropdown toggling
+  const gitBtn = document.getElementById('git-btn');
+  const gitDropdownMenu = document.getElementById('git-dropdown-menu');
+  gitBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    gitDropdownMenu?.classList.toggle('active');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (gitDropdownMenu && !gitDropdownMenu.contains(e.target) && e.target !== gitBtn) {
+      gitDropdownMenu.classList.remove('active');
+    }
+  });
+
+  document.getElementById('git-pull-btn')?.addEventListener('click', async () => {
+    gitDropdownMenu?.classList.remove('active');
+    await executeGitPull();
+  });
+
+  document.getElementById('git-push-btn')?.addEventListener('click', async () => {
+    gitDropdownMenu?.classList.remove('active');
+    await executeGitPush();
+  });
+
+  document.getElementById('settings-btn')?.addEventListener('click', () => {
+    showConfigModal();
+    const appearanceTabBtn = document.querySelector('.modal-tab-btn[data-tab="tab-appearance"]');
+    if (appearanceTabBtn) {
+      appearanceTabBtn.click();
+    }
+  });
+
+  // Custom confirmation modal bindings
+  document.getElementById('confirm-ok-btn')?.addEventListener('click', () => handleConfirmResult(true));
+  document.getElementById('confirm-cancel-btn')?.addEventListener('click', () => handleConfirmResult(false));
+  document.getElementById('confirm-close-btn')?.addEventListener('click', () => handleConfirmResult(false));
+
+  // Custom prompt modal bindings
+  document.getElementById('prompt-ok-btn')?.addEventListener('click', () => {
+    const val = document.getElementById('prompt-input')?.value || '';
+    handlePromptResult(val);
+  });
+  document.getElementById('prompt-cancel-btn')?.addEventListener('click', () => handlePromptResult(null));
+  document.getElementById('prompt-close-btn')?.addEventListener('click', () => handlePromptResult(null));
+  document.getElementById('prompt-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      handlePromptResult(e.target.value);
+    } else if (e.key === 'Escape') {
+      handlePromptResult(null);
+    }
+  });
+
   // Chat keyboard
   chatInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -93,6 +445,29 @@ function setupEventListeners() {
   // Terminal
   document.getElementById('toggle-terminal')?.addEventListener('click', toggleTerminal);
   document.getElementById('clear-terminal')?.addEventListener('click', clearTerminal);
+  document.getElementById('close-terminal-panel')?.addEventListener('click', toggleTerminal);
+
+  // Android Emulator Dropdown toggling
+  const androidBtn = document.getElementById('android-btn');
+  const androidDropdownMenu = document.getElementById('android-dropdown-menu');
+  androidBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    androidDropdownMenu?.classList.toggle('active');
+    if (androidDropdownMenu?.classList.contains('active')) {
+      detectAndroidEmulators();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (androidDropdownMenu && !androidDropdownMenu.contains(e.target) && e.target !== androidBtn) {
+      androidDropdownMenu.classList.remove('active');
+    }
+  });
+
+  document.getElementById('android-detect-btn')?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await detectAndroidEmulators();
+  });
   terminalInput?.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       const cmd = terminalInput.value.trim();
@@ -133,7 +508,8 @@ function setupEventListeners() {
 
   // IPC: file written by agent → auto-open
   ipcRenderer.on('file-written', (event, filePath) => {
-    appendTerminalLine(`📁 Fichier écrit: ${filePath}`, 'info');
+    const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+    appendTerminalLine(`📁 ${dict.file_written || 'Fichier écrit'}: ${filePath}`, 'info');
     autoOpenFile(filePath);
   });
 
@@ -154,6 +530,194 @@ function setupKeyboardShortcuts() {
   });
 }
 
+// ─── Theme & Language ────────────────────────────────────────────────────────
+function applyTheme(theme) {
+  document.body.className = '';
+  document.body.classList.add(`theme-${theme}`);
+  updateEditorTextColorUI();
+}
+
+function rgbToHex(rgbStr) {
+  const match = rgbStr.match(/\d+/g);
+  if (!match) return '#ffffff';
+  const r = parseInt(match[0]);
+  const g = parseInt(match[1]);
+  const b = parseInt(match[2]);
+  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+function updateEditorTextColorUI() {
+  const input = document.getElementById('editor-text-color-input');
+  if (!input) return;
+
+  if (modelConfig && modelConfig.editorTextColor) {
+    document.documentElement.style.setProperty('--editor-text-custom', modelConfig.editorTextColor);
+    input.value = modelConfig.editorTextColor;
+  } else {
+    document.documentElement.style.removeProperty('--editor-text-custom');
+    setTimeout(() => {
+      const defaultColor = window.getComputedStyle(document.body).color;
+      input.value = rgbToHex(defaultColor);
+    }, 50);
+  }
+}
+
+function applyLanguage(lang) {
+  const dict = TRANSLATIONS[lang] || TRANSLATIONS.fr;
+  
+  const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  const setPlaceholder = (id, txt) => { const el = document.getElementById(id); if (el) el.placeholder = txt; };
+
+  setText('btn-text-settings', dict.settings);
+  setText('btn-text-open-folder', dict.open_folder);
+  setText('btn-text-open-file', dict.open_file);
+  setText('btn-text-save', dict.save);
+  setText('btn-text-new-file', dict.new_file);
+  setText('btn-text-new-folder', dict.new_folder);
+  setText('btn-text-terminal', dict.terminal);
+  setText('lbl-git-pull', dict.git_pull);
+  setText('lbl-git-push', dict.git_push);
+  if (!currentProject) {
+    setText('project-name', dict.no_project);
+  }
+  setText('lbl-empty-state', dict.open_folder_hint);
+  setHtml('lbl-status-hint', dict.status_hint);
+  setText('lbl-terminal-title', dict.terminal_title);
+  setHtml('lbl-ai-agent', `<i data-lucide="bot" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></i> ` + dict.ai_agent);
+  setText('lbl-btn-config', dict.config);
+  setHtml('cap-tree', `<i data-lucide="folder-tree" style="width:10px; height:10px; vertical-align: middle; margin-right: 2px;"></i> ` + dict.cap_tree);
+  setHtml('cap-write', `<i data-lucide="file-edit" style="width:10px; height:10px; vertical-align: middle; margin-right: 2px;"></i> ` + dict.cap_write);
+  setHtml('cap-cmd', `<i data-lucide="terminal" style="width:10px; height:10px; vertical-align: middle; margin-right: 2px;"></i> ` + dict.cap_cmd);
+  
+  // Welcome message
+  const welcomeMsgEl = document.getElementById('lbl-welcome-msg');
+  if (welcomeMsgEl && welcomeMsgEl.classList.contains('system')) {
+    welcomeMsgEl.innerHTML = dict.welcome_msg;
+  }
+  
+  setText('lbl-attach-image', dict.attach_image);
+  setText('lbl-capture-screen', dict.capture_screen);
+  setText('lbl-autonomous', dict.autonomous);
+  setText('lbl-btn-agent', dict.agent);
+  setText('lbl-active-tasks', dict.active_tasks);
+  setText('lbl-config-title', dict.config_title);
+  
+  setText('tab-title-ai', dict.tab_ai);
+  setText('tab-title-appearance', dict.tab_appearance);
+  setText('tab-title-github', dict.tab_github);
+  
+  setText('lbl-provider', dict.provider);
+  setText('lbl-api-url', dict.api_url);
+  setText('lbl-model', dict.model);
+  setText('hint-model-choice', dict.model_hint);
+  setText('lbl-api-key', dict.api_key);
+  setText('lbl-theme', dict.theme);
+  setText('lbl-lang', dict.lang);
+  setText('lbl-editor-text-color', dict.editor_text_color);
+  setText('btn-reset-editor-text-color', dict.reset);
+  
+  setText('lbl-github-token', dict.github_token);
+  setText('hint-github-token', dict.github_token_hint);
+  setText('lbl-github-user', dict.github_user);
+  setText('lbl-github-email', dict.github_email);
+  setText('hint-github-config', dict.github_config_hint);
+  
+  setPlaceholder('chat-input', dict.chat_input_placeholder);
+  setPlaceholder('file-search', dict.search_placeholder);
+  setPlaceholder('terminal-input', dict.term_input_placeholder);
+  
+  // Update confirm modal text
+  setText('confirm-title', dict.confirm_title);
+  setText('confirm-cancel-btn', dict.cancel_btn);
+  setText('confirm-ok-btn', dict.confirm_btn);
+  
+  // Update prompt modal text
+  setText('prompt-title', dict.confirm_title);
+  setText('prompt-cancel-btn', dict.cancel_btn);
+  setText('prompt-ok-btn', dict.confirm_btn);
+  
+  // Update Android dropdown text
+  setText('lbl-android-detect', dict.android_detect);
+  const noAvdEl = document.getElementById('lbl-android-no-avd');
+  if (noAvdEl) noAvdEl.textContent = dict.android_no_avd;
+
+  setText('tab-title-android', dict.tab_android);
+  setText('lbl-android-autodetect', dict.android_autodetect);
+  setText('lbl-android-always-show', dict.android_always_show);
+  setText('lbl-android-help', dict.android_help);
+
+  if (window.lucide) {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
+}
+
+// ─── Custom Confirmation Modal Logic ──────────────────────────────────────────
+function showConfirm(title, message, details = '') {
+  return new Promise((resolve) => {
+    confirmResolve = resolve;
+    
+    const modal = document.getElementById('confirm-modal');
+    const titleEl = document.getElementById('confirm-title');
+    const msgEl = document.getElementById('confirm-message');
+    const detailsEl = document.getElementById('confirm-details');
+    
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.innerHTML = message.replace(/\n/g, '<br>');
+    
+    if (detailsEl) {
+      if (details) {
+        detailsEl.textContent = details;
+        detailsEl.style.display = 'block';
+      } else {
+        detailsEl.style.display = 'none';
+      }
+    }
+    
+    modal.classList.add('active');
+  });
+}
+
+function handleConfirmResult(value) {
+  const modal = document.getElementById('confirm-modal');
+  modal.classList.remove('active');
+  if (confirmResolve) {
+    confirmResolve(value);
+    confirmResolve = null;
+  }
+}
+
+// ─── Custom Prompt Modal Logic ────────────────────────────────────────────────
+let promptResolve = null;
+
+function showPrompt(title, message, defaultValue = '') {
+  return new Promise((resolve) => {
+    promptResolve = resolve;
+    
+    const modal = document.getElementById('prompt-modal');
+    const titleEl = document.getElementById('prompt-title');
+    const msgEl = document.getElementById('prompt-message');
+    const inputEl = document.getElementById('prompt-input');
+    
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = message;
+    if (inputEl) {
+      inputEl.value = defaultValue;
+      modal.classList.add('active');
+      setTimeout(() => inputEl.focus(), 150);
+    }
+  });
+}
+
+function handlePromptResult(value) {
+  const modal = document.getElementById('prompt-modal');
+  modal.classList.remove('active');
+  if (promptResolve) {
+    promptResolve(value);
+    promptResolve = null;
+  }
+}
+
 // ─── Folder / File Tree ───────────────────────────────────────────────────────
 async function openFolder() {
   const folderPath = await ipcRenderer.invoke('open-directory-dialog');
@@ -163,7 +727,21 @@ async function openFolder() {
   allFiles = [];
   await loadFileTree(folderPath);
   await refreshFileTreeCache();
-  addChatMessage('system', `📂 Projet ouvert: ${folderPath}`);
+  
+  // Set up Git credentials automatically on open
+  if (modelConfig && (modelConfig.githubToken || modelConfig.githubUser || modelConfig.githubEmail)) {
+    await ipcRenderer.invoke('setup-git-credentials', {
+      cwd: currentProject,
+      githubToken: modelConfig.githubToken,
+      githubUser: modelConfig.githubUser,
+      githubEmail: modelConfig.githubEmail
+    });
+  }
+
+  await updateAndroidDropdownVisibility();
+
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  addChatMessage('system', `📂 ${dict.project_opened || 'Projet ouvert'}: ${folderPath}`);
 }
 
 async function openFileClick() {
@@ -187,7 +765,8 @@ async function refreshFileTreeCache() {
 }
 
 async function loadFileTree(dirPath, container = fileTreeEl) {
-  container.innerHTML = '<div class="loading-state">⏳ Chargement...</div>';
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  container.innerHTML = `<div class="loading-state">${dict.loading}</div>`;
   const result = await ipcRenderer.invoke('list-directory', dirPath);
   if (result.success) renderFileTree(result.items, container, dirPath);
   else container.innerHTML = `<div class="empty-state">Erreur: ${result.error}</div>`;
@@ -195,30 +774,31 @@ async function loadFileTree(dirPath, container = fileTreeEl) {
 
 function renderFileTree(items, container = fileTreeEl, parentPath = '') {
   container.innerHTML = '';
-  if (!items.length) { container.innerHTML = '<div class="empty-state">Dossier vide</div>'; return; }
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  if (!items.length) { container.innerHTML = `<div class="empty-state">${dict.empty_folder}</div>`; return; }
 
   items.forEach(item => {
-    // Track all files for search
     if (!item.isDirectory) allFiles.push({ name: item.name, path: item.path });
 
     const el = document.createElement('div');
     el.className = `file-item ${item.isDirectory ? 'folder-item' : ''}`;
     el.dataset.path = item.path;
     el.dataset.name = item.name.toLowerCase();
-    el.innerHTML = `<span class="file-icon">${item.isDirectory ? '📁' : getFileIcon(item.name)}</span><span class="file-name">${item.name}</span>`;
+    
+    const iconHtml = item.isDirectory ? getFolderIconHtml(false) : getFileIconHtml(item.name);
+    el.innerHTML = `<span class="file-icon">${iconHtml}</span><span class="file-name" style="margin-left: 6px;">${item.name}</span>`;
 
     // Context menu on right-click
     el.addEventListener('contextmenu', e => { e.preventDefault(); showContextMenu(e, item); });
 
     el.addEventListener('click', async e => {
       e.stopPropagation();
-      // Remove previous active
       document.querySelectorAll('.file-item.active').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
 
       if (item.isDirectory) {
         const expanded = el.classList.toggle('expanded');
-        el.querySelector('.file-icon').textContent = expanded ? '📂' : '📁';
+        el.querySelector('.file-icon').innerHTML = getFolderIconHtml(expanded);
         let child = el.querySelector('.sub-tree');
         if (expanded && !child) {
           child = document.createElement('div');
@@ -236,6 +816,10 @@ function renderFileTree(items, container = fileTreeEl, parentPath = '') {
 
     container.appendChild(el);
   });
+  
+  if (window.lucide) {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
 }
 
 // ─── File Search ──────────────────────────────────────────────────────────────
@@ -243,30 +827,68 @@ function filterFileTree(query) {
   const q = query.toLowerCase().trim();
 
   if (!q) {
-    // Show all
     document.querySelectorAll('.file-item').forEach(el => el.style.display = '');
     document.querySelectorAll('.sub-tree').forEach(el => el.style.display = '');
     return;
   }
 
-  // Search in flat file list and highlight matches
   const matches = allFiles.filter(f => f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q));
 
-  // Hide all items first
   document.querySelectorAll('.file-item').forEach(el => {
     const name = el.dataset.name || '';
     const isMatch = name.includes(q);
     el.style.display = isMatch ? '' : 'none';
   });
 
-  // Show parent containers
   document.querySelectorAll('.sub-tree').forEach(el => el.style.display = '');
 }
 
-function getFileIcon(name) {
+// ─── Vector Icons Mapper (Lucide) ─────────────────────────────────────────────
+function getFileIconName(name) {
   const ext = name.split('.').pop()?.toLowerCase();
-  const m = { js:'🟨',jsx:'⚛️',ts:'🔷',tsx:'⚛️',py:'🐍',html:'🌐',css:'🎨',scss:'🎨',json:'📋',md:'📝',txt:'📄',java:'☕',cpp:'⚙️',c:'⚙️',rs:'🦀',go:'🔹',rb:'💎',php:'🐘',sh:'📟',yml:'⚙️',yaml:'⚙️',xml:'📰',sql:'🗃️',env:'🔑',dockerfile:'🐳',png:'🖼️',jpg:'🖼️',svg:'🎨',pdf:'📄',zip:'📦' };
-  return m[ext] || '📄';
+  const m = {
+    js: 'file-json',
+    jsx: 'code-2',
+    ts: 'file-type-2',
+    tsx: 'code-2',
+    py: 'terminal',
+    html: 'file-code',
+    css: 'palette',
+    scss: 'palette',
+    json: 'braces',
+    md: 'file-text',
+    txt: 'file-text',
+    java: 'coffee',
+    cpp: 'settings',
+    c: 'settings',
+    rs: 'wrench',
+    go: 'play',
+    rb: 'gem',
+    php: 'code',
+    sh: 'terminal',
+    yml: 'settings-2',
+    yaml: 'settings-2',
+    xml: 'file-code',
+    sql: 'database',
+    env: 'key-round',
+    dockerfile: 'container',
+    png: 'image',
+    jpg: 'image',
+    svg: 'image',
+    pdf: 'file-down',
+    zip: 'archive'
+  };
+  return m[ext] || 'file';
+}
+
+function getFileIconHtml(name) {
+  const icon = getFileIconName(name);
+  return `<i data-lucide="${icon}" style="width: 14px; height: 14px; vertical-align: middle;"></i>`;
+}
+
+function getFolderIconHtml(expanded = false) {
+  const icon = expanded ? 'folder-open' : 'folder';
+  return `<i data-lucide="${icon}" style="width: 14px; height: 14px; vertical-align: middle;"></i>`;
 }
 
 // ─── Context Menu ─────────────────────────────────────────────────────────────
@@ -277,9 +899,11 @@ function showContextMenu(e, item) {
   menu.className = 'context-menu';
   menu.style.cssText = `position:fixed;top:${e.clientY}px;left:${e.clientX}px;z-index:9999;`;
 
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+
   const actions = item.isDirectory
-    ? [['📄 Nouveau fichier', () => createNewFileIn(item.path)], ['📂 Nouveau dossier', () => createNewFolderIn(item.path)], ['🗑️ Supprimer', () => deleteItem(item)]]
-    : [['✏️ Ouvrir', () => openFile(item.path)], ['💬 Demander à l\'AI', () => askAIAboutFile(item)], ['🗑️ Supprimer', () => deleteItem(item)]];
+    ? [[`📄 ${dict.new_file}`, () => createNewFileIn(item.path)], [`📂 ${dict.new_folder}`, () => createNewFolderIn(item.path)], [`🗑️ ${dict.delete_confirm_msg}`, () => deleteItem(item)]]
+    : [[`✏️ Ouvrir`, () => openFile(item.path)], [`💬 Demander à l'AI`, () => askAIAboutFile(item)], [`🗑️ ${dict.delete_confirm_msg}`, () => deleteItem(item)]];
 
   actions.forEach(([label, fn]) => {
     const btn = document.createElement('button');
@@ -299,7 +923,9 @@ function askAIAboutFile(item) {
 }
 
 async function deleteItem(item) {
-  if (!confirm(`Supprimer "${item.name}"?`)) return;
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  const confirmed = await showConfirm(dict.confirm_title, `${dict.delete_confirm_msg} "${item.name}"?`);
+  if (!confirmed) return;
   await ipcRenderer.invoke('delete-file', item.path);
   if (currentProject) loadFileTree(currentProject);
 }
@@ -307,7 +933,7 @@ async function deleteItem(item) {
 // ─── File Open / Edit ─────────────────────────────────────────────────────────
 async function openFile(filePath) {
   const result = await ipcRenderer.invoke('read-file', filePath);
-  if (!result.success) { showError('Impossible d\'ouvrir: ' + result.error); return; }
+  if (!result.success) { showError(TRANSLATIONS[modelConfig?.language || 'fr'].error_open + result.error); return; }
 
   let file = openFiles.find(f => f.path === filePath);
   if (!file) {
@@ -321,7 +947,6 @@ async function openFile(filePath) {
 }
 
 async function autoOpenFile(filePath) {
-  // Re-open / refresh file if already open, else open it
   const existing = openFiles.find(f => f.path === filePath);
   if (existing) {
     const result = await ipcRenderer.invoke('read-file', filePath);
@@ -349,43 +974,48 @@ function setActiveFile(file) {
   updateCursorPosition();
   updateLineNumbers();
 
-  // Highlight active in tree
   document.querySelectorAll('.file-item').forEach(el => {
     el.classList.toggle('active', el.dataset.path === file.path);
   });
 }
 
 async function createNewFile() {
-  if (!currentProject) { showError('Ouvrez un dossier d\'abord'); return; }
-  const name = prompt('Nom du fichier:');
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  if (!currentProject) { showError(dict.error_no_project); return; }
+  const name = await showPrompt(dict.confirm_title, dict.prompt_file_name);
   if (!name) return;
-  const filePath = currentProject + '\\' + name;
+  const filePath = path.join(currentProject, name);
   await ipcRenderer.invoke('write-file', filePath, '');
   await loadFileTree(currentProject);
   openFile(filePath);
 }
 
 async function createNewFileIn(dirPath) {
-  const name = prompt('Nom du fichier:');
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  const name = await showPrompt(dict.confirm_title, dict.prompt_file_name);
   if (!name) return;
-  const filePath = dirPath + '\\' + name;
+  const filePath = path.join(dirPath, name);
   await ipcRenderer.invoke('write-file', filePath, '');
   await loadFileTree(currentProject);
   openFile(filePath);
 }
 
 async function createNewFolder() {
-  if (!currentProject) { showError('Ouvrez un dossier d\'abord'); return; }
-  const name = prompt('Nom du dossier:');
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  if (!currentProject) { showError(dict.error_no_project); return; }
+  const name = await showPrompt(dict.confirm_title, dict.prompt_folder_name);
   if (!name) return;
-  await ipcRenderer.invoke('create-folder', currentProject + '\\' + name);
+  const folderPath = path.join(currentProject, name);
+  await ipcRenderer.invoke('create-folder', folderPath);
   loadFileTree(currentProject);
 }
 
 async function createNewFolderIn(dirPath) {
-  const name = prompt('Nom du dossier:');
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  const name = await showPrompt(dict.confirm_title, dict.prompt_folder_name);
   if (!name) return;
-  await ipcRenderer.invoke('create-folder', dirPath + '\\' + name);
+  const folderPath = path.join(dirPath, name);
+  await ipcRenderer.invoke('create-folder', folderPath);
   loadFileTree(currentProject);
 }
 
@@ -395,21 +1025,31 @@ function renderTabs() {
   openFiles.forEach(file => {
     const tab = document.createElement('div');
     tab.className = `tab ${file === activeFile ? 'active' : ''} ${file.isModified ? 'modified' : ''}`;
+    
+    const iconHtml = getFileIconHtml(file.name);
     tab.innerHTML = `
       <span class="tab-status-dot ${file.isModified ? 'modified' : 'saved'}"></span>
-      <span class="tab-name">${getFileIcon(file.name)} ${file.name}</span>
+      <span class="tab-name" style="display:flex; align-items:center; gap:6px;">${iconHtml} ${file.name}</span>
       <span class="tab-close">×</span>
     `;
     tab.addEventListener('click', e => { if (!e.target.classList.contains('tab-close')) setActiveFile(file); });
     tab.querySelector('.tab-close').addEventListener('click', e => { e.stopPropagation(); closeFile(file.path); });
     tabsContainer.appendChild(tab);
   });
+  
+  if (window.lucide) {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
 }
 
-function closeFile(filePath) {
+async function closeFile(filePath) {
   const idx = openFiles.findIndex(f => f.path === filePath);
   if (idx === -1) return;
-  if (openFiles[idx].isModified && !confirm('Modifications non sauvegardées. Fermer quand même?')) return;
+  if (openFiles[idx].isModified) {
+    const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+    const confirmed = await showConfirm(dict.confirm_title, dict.confirm_unsaved);
+    if (!confirmed) return;
+  }
   openFiles.splice(idx, 1);
   if (activeFile?.path === filePath) {
     if (openFiles.length > 0) setActiveFile(openFiles[Math.max(0, idx - 1)]);
@@ -437,7 +1077,6 @@ function onEditorKeydown(e) {
     codeEditor.selectionStart = codeEditor.selectionEnd = s + 2;
     if (activeFile) { activeFile.content = codeEditor.value; highlightCode(); }
   }
-  // Auto-close pairs
   const pairs = { '(':')', '[':']', '{':'}', '"':'"', "'":"'", '`':'`' };
   if (pairs[e.key] && e.key !== '"' && e.key !== "'" && e.key !== '`') {
     e.preventDefault();
@@ -459,7 +1098,7 @@ async function saveCurrentFile() {
     updateSaveIndicator('saved');
     setTimeout(() => updateSaveIndicator(''), 2500);
   } else {
-    showError('Sauvegarde échouée: ' + result.error);
+    showError(TRANSLATIONS[modelConfig?.language || 'fr'].save_failed + result.error);
     updateSaveIndicator('');
   }
 }
@@ -467,7 +1106,8 @@ async function saveCurrentFile() {
 function updateSaveIndicator(state) {
   const el = document.getElementById('save-indicator');
   if (!el) return;
-  const states = { saving: '⏳ Sauvegarde…', saved: '✓ Sauvegardé', modified: '● Non sauvegardé', '': '' };
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  const states = { saving: dict.saving, saved: `✓ ${dict.save_success}`, modified: `● ${dict.modified}`, '': '' };
   const classes = { saving: 'saving', saved: 'saved', modified: 'modified', '': '' };
   el.textContent = states[state] || '';
   el.className = 'save-badge ' + (classes[state] || '');
@@ -475,14 +1115,18 @@ function updateSaveIndicator(state) {
 
 // ─── Syntax Highlighting ──────────────────────────────────────────────────────
 function highlightCode() {
-  if (!highlightLayer || typeof hljs === 'undefined') return;
+  if (!highlightLayer) return;
+  if (typeof hljs === 'undefined') {
+    highlightLayer.textContent = codeEditor.value + '\n';
+    return;
+  }
   const lang = detectLang(activeFile?.path || '');
   try {
     const r = lang
       ? hljs.highlight(codeEditor.value, { language: lang, ignoreIllegals: true })
       : hljs.highlightAuto(codeEditor.value);
     highlightLayer.innerHTML = r.value + '\n';
-  } catch (e) { highlightLayer.textContent = codeEditor.value; }
+  } catch (e) { highlightLayer.textContent = codeEditor.value + '\n'; }
 }
 
 function clearHighlight() { if (highlightLayer) highlightLayer.innerHTML = ''; }
@@ -513,7 +1157,6 @@ function updateCursorPosition() {
   const activeLine = text.length;
   document.getElementById('cursor-position').textContent = `Ln ${activeLine}, Col ${text[text.length - 1].length + 1}`;
   
-  // Highlight current line number in the gutter
   const divs = document.querySelectorAll('#line-numbers div');
   divs.forEach((div, idx) => {
     div.classList.toggle('active', idx + 1 === activeLine);
@@ -541,9 +1184,36 @@ function populateConfigModal() {
   s('api-key', modelConfig.apiKey);
   s('model-name', modelConfig.modelName);
   s('base-url', modelConfig.baseUrl);
+  s('theme-selector', modelConfig.theme || 'cyber-purple');
+  s('language-selector', modelConfig.language || 'fr');
+  s('github-token', modelConfig.githubToken || '');
+  s('github-user', modelConfig.githubUser || '');
+  s('github-email', modelConfig.githubEmail || '');
+
+  const autoDetectCheckbox = document.getElementById('android-autodetect-checkbox');
+  if (autoDetectCheckbox) autoDetectCheckbox.checked = modelConfig.androidAutoDetect !== false;
+  const alwaysShowCheckbox = document.getElementById('android-always-show-checkbox');
+  if (alwaysShowCheckbox) alwaysShowCheckbox.checked = !!modelConfig.androidAlwaysShow;
+
+  isEditorTextColorCustomized = !!modelConfig.editorTextColor;
+  updateEditorTextColorUI();
 }
 
-function showConfigModal() { populateConfigModal(); onModelTypeChange(); configModal.classList.add('active'); }
+function showConfigModal() { 
+  populateConfigModal(); 
+  onModelTypeChange(); 
+  configModal.classList.add('active'); 
+  
+  // Reset active tab in settings modal
+  document.querySelectorAll('.modal-tab-btn').forEach((b, idx) => {
+    b.classList.toggle('active', idx === 0);
+  });
+  document.querySelectorAll('.modal-tab-content').forEach((c, idx) => {
+    c.classList.toggle('active', idx === 0);
+    c.style.display = idx === 0 ? 'flex' : 'none';
+  });
+}
+
 function hideConfigModal() { configModal.classList.remove('active'); }
 
 function onModelTypeChange() {
@@ -589,12 +1259,44 @@ async function saveModelConfig() {
     apiKey:    document.getElementById('api-key')?.value || '',
     modelName: document.getElementById('model-name')?.value || '',
     baseUrl:   document.getElementById('base-url')?.value || '',
+    theme:     document.getElementById('theme-selector')?.value || 'cyber-purple',
+    language:  document.getElementById('language-selector')?.value || 'fr',
+    githubToken: document.getElementById('github-token')?.value || '',
+    githubUser:  document.getElementById('github-user')?.value || '',
+    githubEmail: document.getElementById('github-email')?.value || '',
+    androidAutoDetect: document.getElementById('android-autodetect-checkbox')?.checked ?? true,
+    androidAlwaysShow: document.getElementById('android-always-show-checkbox')?.checked ?? false,
+    editorTextColor: isEditorTextColorCustomized 
+      ? (document.getElementById('editor-text-color-input')?.value || '') 
+      : (modelConfig?.editorTextColor || '')
   };
+  
   await ipcRenderer.invoke('save-model-config', config);
   modelConfig = config;
+  
+  applyTheme(config.theme);
+  applyLanguage(config.language);
+  
+  if (currentProject) {
+    const gitRes = await ipcRenderer.invoke('setup-git-credentials', {
+      cwd: currentProject,
+      githubToken: config.githubToken,
+      githubUser: config.githubUser,
+      githubEmail: config.githubEmail
+    });
+    if (gitRes.success) {
+      appendTerminalLine('✓ Git credentials configured locally.', 'stdout');
+    } else {
+      appendTerminalLine('⚠ Git config skipped or error: ' + gitRes.error, 'info');
+    }
+  }
+
   updateStatusBar();
+  await updateAndroidDropdownVisibility();
   hideConfigModal();
-  addChatMessage('system', `✅ Modèle configuré: ${config.type} / ${config.modelName}`);
+  
+  const dict = TRANSLATIONS[config.language] || TRANSLATIONS.fr;
+  addChatMessage('system', `✅ ${dict.config_saved || 'Configuration enregistrée'}: ${config.type} / ${config.modelName}`);
 }
 
 function updateStatusBar() {
@@ -607,11 +1309,54 @@ function updateStatusBar() {
   if (cs) cs.className = `status-indicator ${ok ? 'connected' : 'disconnected'}`;
 }
 
+// ─── Git Operations (Pull / Push) ─────────────────────────────────────────────
+async function executeGitPull() {
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  if (!currentProject) {
+    showError(dict.error_no_project);
+    return;
+  }
+  
+  appendTerminalLine('▶ Git Pull...', 'prompt');
+  const result = await ipcRenderer.invoke('git-pull', { cwd: currentProject });
+  if (result.success) {
+    appendTerminalLine(result.message || 'Pull completed successfully.', 'stdout');
+    addChatMessage('system', `⬇️ Git Pull: ${dict.git_success}`);
+    
+    await loadFileTree(currentProject);
+    await refreshFileTreeCache();
+  } else {
+    appendTerminalLine('✗ ' + result.error, 'error');
+    showError(`${dict.git_failed}: ${result.error}`);
+  }
+}
+
+async function executeGitPush() {
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  if (!currentProject) {
+    showError(dict.error_no_project);
+    return;
+  }
+  
+  const commitMessage = await showPrompt(dict.git_push, dict.prompt_commit_msg || 'Message de commit :');
+  if (commitMessage === null) return;
+  
+  const msg = commitMessage.trim() || 'Update via CobraBub IDE';
+  
+  appendTerminalLine(`▶ Git Push: Adding, committing ("${msg}") and pushing...`, 'prompt');
+  const result = await ipcRenderer.invoke('git-push', { cwd: currentProject, commitMessage: msg });
+  if (result.success) {
+    appendTerminalLine(result.message || 'Push completed successfully.', 'stdout');
+    addChatMessage('system', `⬆️ Git Push: ${dict.git_success}`);
+  } else {
+    appendTerminalLine('✗ ' + result.error, 'error');
+    showError(`${dict.git_failed}: ${result.error}`);
+  }
+}
+
 // ─── Parse Agent Response for File Writes & Commands ────────────────────────
 async function parseAndExecuteAgentActions(response) {
   const actions = [];
-
-  // Parse WRITE_FILE blocks
   const writeRegex = /```WRITE_FILE:([^\n]+)\n([\s\S]*?)```/g;
   let match;
   while ((match = writeRegex.exec(response)) !== null) {
@@ -623,7 +1368,6 @@ async function parseAndExecuteAgentActions(response) {
     actions.push({ type: 'write', path: fullPath, relPath, content });
   }
 
-  // Parse RUN_CMD blocks
   const cmdRegex = /```RUN_CMD\n([\s\S]*?)```/g;
   while ((match = cmdRegex.exec(response)) !== null) {
     const cmd = match[1].trim();
@@ -632,9 +1376,9 @@ async function parseAndExecuteAgentActions(response) {
 
   if (actions.length === 0) return;
 
-  // Show action panel
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
   const summary = actions.map(a => a.type === 'write' ? `📝 ${a.relPath}` : `▶ ${a.cmd}`).join('\n');
-  const confirmed = confirm(`L'agent veut effectuer ${actions.length} action(s):\n\n${summary}\n\nAutoriser?`);
+  const confirmed = await showConfirm(dict.confirm_title, `${dict.agent_run_msg} (${actions.length})`, summary);
   if (!confirmed) return;
 
   for (const action of actions) {
@@ -679,7 +1423,6 @@ function handleMediaFileSelect(e) {
     };
     reader.readAsDataURL(file);
   }
-  // Reset input
   e.target.value = '';
 }
 
@@ -711,13 +1454,12 @@ async function openScreenCaptureModal() {
       <div class="screen-source-name" title="${src.name}">${src.name}</div>
     `;
     card.addEventListener('click', () => {
-      // Parse data URL to base64
       const dataUrl = src.thumbnail;
       const commaIdx = dataUrl.indexOf(',');
       const base64Data = dataUrl.substring(commaIdx + 1);
       
       activeAttachments.push({
-        mimeType: 'image/png', // desktopCapturer gives PNG thumbnails
+        mimeType: 'image/png',
         data: base64Data
       });
       renderAttachmentPreviews();
@@ -782,29 +1524,27 @@ async function runAgentTaskLoop(initialInstruction, attachments = []) {
   const agentBtn = document.getElementById('run-agent');
   const sendBtn = document.getElementById('send-message');
   
-  // Style agent button to active/stop state
   const originalText = agentBtn.textContent;
   agentBtn.textContent = '🛑 Stop';
   agentBtn.classList.add('agent-active-badge');
-  if (sendBtn) sendBtn.disabled = false; // Keep Send button active for interventions
+  if (sendBtn) sendBtn.disabled = false;
   
-  // Clear attachments from UI input
   activeAttachments = [];
   renderAttachmentPreviews();
 
   let nextPrompt = initialInstruction;
   let turnAttachments = attachments;
   
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+
   while (agentLoopActive && currentAgentTurn < MAX_AGENT_TURNS) {
     currentAgentTurn++;
-    const turnLabel = `Tour ${currentAgentTurn}/${MAX_AGENT_TURNS}`;
+    const turnLabel = `${dict.tour} ${currentAgentTurn}/${MAX_AGENT_TURNS}`;
     addTask(`🤖 Agent - ${turnLabel} : Analyse…`, 'running');
     setLoading(true);
 
-    // Refresh file tree cache
     await refreshFileTreeCache();
 
-    // ─── Process user intervention if any ───
     let promptToSend = nextPrompt;
     let attachmentsToSend = turnAttachments;
     if (userIntervention) {
@@ -819,7 +1559,7 @@ ${nextPrompt}`;
         attachmentsToSend = [...attachmentsToSend, ...userIntervention.attachments];
       }
       addChatMessage('system', '📥 Vos consignes ont été transmises à l\'agent pour ce tour.');
-      userIntervention = null; // Clear intervention
+      userIntervention = null;
     }
 
     const result = await ipcRenderer.invoke('send-chat-message', {
@@ -854,14 +1594,17 @@ ${nextPrompt}`;
       break;
     }
 
-    // Execute actions
     const autoMode = document.getElementById('autonomous-mode').checked;
     if (!autoMode) {
       const summary = actions.map(a => a.type === 'write' ? `📝 ${a.relPath}` : `▶ ${a.cmd}`).join('\n');
-      const confirmed = confirm(`[Tour ${currentAgentTurn}] L'agent souhaite exécuter ${actions.length} action(s) :\n\n${summary}\n\nAutoriser ?`);
+      const confirmed = await showConfirm(
+        `${dict.confirm_title} - Tour ${currentAgentTurn}`,
+        `${dict.agent_run_msg} (${actions.length})`,
+        summary
+      );
       if (!confirmed) {
-        addChatMessage('system', `🛑 Tâche arrêtée par l'utilisateur.`);
-        addTask(`Agent arrêté par l'utilisateur`, 'failed');
+        addChatMessage('system', dict.agent_stopped);
+        addTask(`${dict.agent_failed} (tour ${currentAgentTurn})`, 'failed');
         break;
       }
     }
@@ -904,18 +1647,15 @@ ${nextPrompt}`;
       break;
     }
 
-    // Build observation prompt
     nextPrompt = `[OBSERVATION DU TOUR ${currentAgentTurn}]
 ${observations.join('\n\n')}
 
 Continuez la tâche en fonction de ces observations. S'il n'y a plus rien à faire, répondez simplement en expliquant que tout est bon.`;
-    turnAttachments = []; // Clear attachments after first turn
+    turnAttachments = [];
 
-    // Minor delay between turns
     await new Promise(resolve => setTimeout(resolve, 800));
   }
 
-  // Restore button state
   agentBtn.textContent = originalText;
   agentBtn.classList.remove('agent-active-badge');
   agentLoopActive = false;
@@ -927,7 +1667,6 @@ async function sendMessage() {
   if (!message) return;
 
   if (agentLoopActive) {
-    // User intervention during agent run!
     const attachmentsToSend = [...activeAttachments];
     activeAttachments = [];
     renderAttachmentPreviews();
@@ -935,17 +1674,15 @@ async function sendMessage() {
     addChatMessage('user', `💬 [Intervention] ${message}`, attachmentsToSend);
     chatInput.value = '';
     
-    // Save intervention for the next loop turn
     userIntervention = { message, attachments: attachmentsToSend };
     return;
   }
 
   if (isLoading) return;
   if (!modelConfig?.apiKey && !['ollama','lmstudio','vllm','local'].includes(modelConfig?.type)) {
-    addChatMessage('system', '⚠️ Clé API manquante. Cliquez sur "Configure".'); return;
+    addChatMessage('system', TRANSLATIONS[modelConfig?.language || 'fr'].api_key_missing); return;
   }
 
-  // Capture attachments
   const attachmentsToSend = [...activeAttachments];
   activeAttachments = [];
   renderAttachmentPreviews();
@@ -980,24 +1717,20 @@ async function sendMessage() {
 async function runAgentTask() {
   const instruction = chatInput.value.trim() || 'Analyse ce projet et donne un rapport complet';
   if (!modelConfig?.apiKey && !['ollama','lmstudio','vllm','local'].includes(modelConfig?.type)) {
-    addChatMessage('system', '⚠️ Clé API manquante.'); return;
+    addChatMessage('system', TRANSLATIONS[modelConfig?.language || 'fr'].api_key_missing); return;
   }
   
-  // Capture attachments
   const attachmentsToSend = [...activeAttachments];
   addChatMessage('user', `🤖 [Agent] ${instruction}`, attachmentsToSend);
   chatInput.value = '';
 
-  // Run the multi-turn loop!
   runAgentTaskLoop(instruction, attachmentsToSend);
 }
 
 function setLoading(loading) {
   isLoading = loading;
   const sendBtn = document.getElementById('send-message');
-  const agentBtn = document.getElementById('run-agent');
   if (sendBtn) sendBtn.textContent = loading ? '⏳' : 'Envoyer';
-  // Note: we don't disable agentBtn during loading anymore so the user can click Stop!
   if (loading) addThinkingIndicator();
   else removeThinkingIndicator();
 }
@@ -1033,6 +1766,10 @@ function addChatMessage(type, content, attachments = []) {
 
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  if (window.lucide) {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
 }
 
 function escapeHtml(text) {
@@ -1040,7 +1777,6 @@ function escapeHtml(text) {
 }
 
 function renderMarkdown(text) {
-  // Remove WRITE_FILE and RUN_CMD blocks from display (shown as action cards instead)
   let clean = text
     .replace(/```WRITE_FILE:([^\n]+)\n([\s\S]*?)```/g, (_, file, content) =>
       `<div class="action-card write"><span class="action-badge">📝 FICHIER</span> <code>${file.trim()}</code><pre><code>${escapeHtml(content.trim())}</code></pre></div>`)
@@ -1102,11 +1838,9 @@ function appendTerminalLine(text, type = 'stdout') {
   line.textContent = text;
   terminalOutput.appendChild(line);
   terminalOutput.scrollTop = terminalOutput.scrollHeight;
-  // Open terminal if hidden
   document.getElementById('terminal-panel')?.classList.add('open');
 }
 
-// Alias for inline use
 function addTerminalLine(text, type) { appendTerminalLine(text, type); }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
@@ -1116,10 +1850,101 @@ function toggleAgentPanel() {
   const col   = panel.style.width === '0px';
   panel.style.width    = col ? '' : '0px';
   panel.style.overflow = col ? '' : 'hidden';
-  btn.textContent = col ? '◀' : '▶';
+  btn.innerHTML = col ? '<i data-lucide="chevron-right"></i>' : '<i data-lucide="chevron-left"></i>';
+  if (window.lucide) {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
 }
 
 function showError(msg) { addChatMessage('system', '❌ ' + msg); console.error(msg); }
+
+// ─── Android Emulator Operations ──────────────────────────────────────────────
+async function detectAndroidEmulators() {
+  const listContainer = document.getElementById('android-emulators-list');
+  if (!listContainer) return;
+  
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  listContainer.innerHTML = `<div style="padding: 8px 12px; font-size: 11px; color: var(--text-dark);">${dict.loading || '⏳...'}</div>`;
+  
+  const result = await ipcRenderer.invoke('list-android-emulators');
+  listContainer.innerHTML = '';
+  
+  if (result.success && result.emulators && result.emulators.length > 0) {
+    result.emulators.forEach(name => {
+      const btn = document.createElement('button');
+      btn.className = 'dropdown-item';
+      btn.innerHTML = `<i data-lucide="play" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 6px; color: var(--green);"></i> ${name}`;
+      btn.addEventListener('click', async () => {
+        document.getElementById('android-dropdown-menu')?.classList.remove('active');
+        await startAndroidEmulator(name);
+      });
+      listContainer.appendChild(btn);
+    });
+  } else {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.id = 'lbl-android-no-avd';
+    emptyDiv.style.cssText = 'padding: 8px 12px; font-size: 11px; color: var(--text-dark); font-style: italic;';
+    emptyDiv.textContent = dict.android_no_avd;
+    listContainer.appendChild(emptyDiv);
+  }
+  
+  if (window.lucide) {
+    try { window.lucide.createIcons(); } catch (e) {}
+  }
+}
+
+async function startAndroidEmulator(name) {
+  const dict = TRANSLATIONS[modelConfig?.language || 'fr'] || TRANSLATIONS.fr;
+  appendTerminalLine(`▶ [Android] ${dict.android_starting} "${name}"`, 'prompt');
+  
+  const result = await ipcRenderer.invoke('start-android-emulator', name);
+  if (result.success) {
+    appendTerminalLine(`✓ [Android] ${dict.android_success} ("${name}")`, 'stdout');
+    addChatMessage('system', `📱 Android: ${dict.android_success} (${name})`);
+  } else {
+    appendTerminalLine(`✗ [Android] Erreur: ${result.error}`, 'error');
+    showError(`Android Emulator error: ${result.error}`);
+  }
+}
+
+async function updateAndroidDropdownVisibility() {
+  const container = document.querySelector('.android-dropdown-container');
+  if (!container) return;
+  
+  const alwaysShow = modelConfig?.androidAlwaysShow ?? false;
+  const autoDetect = modelConfig?.androidAutoDetect ?? true;
+  
+  if (alwaysShow) {
+    container.style.display = 'inline-block';
+    const isAndroid = currentProject ? await ipcRenderer.invoke('detect-android-project', currentProject) : false;
+    highlightAndroidButton(isAndroid);
+  } else if (autoDetect && currentProject) {
+    const isAndroid = await ipcRenderer.invoke('detect-android-project', currentProject);
+    if (isAndroid) {
+      container.style.display = 'inline-block';
+      highlightAndroidButton(true);
+    } else {
+      container.style.display = 'none';
+    }
+  } else {
+    container.style.display = 'none';
+  }
+}
+
+function highlightAndroidButton(isAndroid) {
+  const btn = document.getElementById('android-btn');
+  if (!btn) return;
+  if (isAndroid) {
+    btn.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+    btn.style.background = 'rgba(16, 185, 129, 0.05)';
+    btn.title = 'Projet Android détecté !';
+    detectAndroidEmulators();
+  } else {
+    btn.style.border = '';
+    btn.style.background = '';
+    btn.title = 'Android Virtual Devices';
+  }
+}
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 init();

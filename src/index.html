@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CobraBub IDE</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script>if(typeof hljs!=='undefined') hljs.configure({ ignoreUnescapedHTML:true });</script>
     <link rel="stylesheet" href="styles.css">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@0.395.0"></script>
 </head>
 <body>
 <div class="app-container">
@@ -16,27 +17,76 @@
 <div class="title-bar">
     <div class="title-brand" style="display: flex; align-items: center; gap: 8px; font-family: var(--ui); font-weight: 700;">
         <img src="../assets/logo.png" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 10px rgba(124,106,247,0.4);">
-        CobraBub IDE
+        <span>CobraBub IDE</span>
     </div>
     <div class="title-bar-drag"></div>
     <div class="window-controls">
-        <button class="window-control min" id="minimize-btn">−</button>
-        <button class="window-control max" id="maximize-btn">□</button>
-        <button class="window-control cls" id="close-btn">×</button>
+        <button class="window-control min" id="minimize-btn"><i data-lucide="minus"></i></button>
+        <button class="window-control max" id="maximize-btn"><i data-lucide="square"></i></button>
+        <button class="window-control cls" id="close-btn"><i data-lucide="x"></i></button>
     </div>
 </div>
 
 <!-- ── Toolbar ─────────────────────────────────────────────────────────────── -->
 <div class="toolbar">
-    <button class="tool-btn primary" id="open-folder-btn" title="Ouvrir dossier">📁 Ouvrir Dossier</button>
-    <button class="tool-btn primary" id="open-file-btn" title="Ouvrir fichier">📄 Ouvrir Fichier</button>
+    <button class="tool-btn primary" id="open-folder-btn" title="Ouvrir dossier">
+        <i data-lucide="folder-open"></i> <span id="btn-text-open-folder">Ouvrir Dossier</span>
+    </button>
+    <button class="tool-btn primary" id="open-file-btn" title="Ouvrir fichier">
+        <i data-lucide="file-plus"></i> <span id="btn-text-open-file">Ouvrir Fichier</span>
+    </button>
     <div class="toolbar-sep"></div>
-    <button class="tool-btn" id="save-file-btn" title="Sauvegarder (Ctrl+S)">💾 Sauvegarder</button>
-    <button class="tool-btn" id="new-file-btn" title="Nouveau fichier">📄 Nouveau</button>
-    <button class="tool-btn" id="new-folder-btn" title="Nouveau dossier">📂 Dossier</button>
+    <button class="tool-btn" id="save-file-btn" title="Sauvegarder (Ctrl+S)">
+        <i data-lucide="save"></i> <span id="btn-text-save">Sauvegarder</span>
+    </button>
+    <button class="tool-btn" id="new-file-btn" title="Nouveau fichier">
+        <i data-lucide="file"></i> <span id="btn-text-new-file">Nouveau</span>
+    </button>
+    <button class="tool-btn" id="new-folder-btn" title="Nouveau dossier">
+        <i data-lucide="folder"></i> <span id="btn-text-new-folder">Dossier</span>
+    </button>
     <div class="toolbar-sep"></div>
-    <button class="tool-btn" id="refresh-files" title="Actualiser">🔄</button>
-    <button class="tool-btn" id="toggle-terminal" title="Terminal (Ctrl+`)">⬛ Terminal</button>
+    <button class="tool-btn" id="refresh-files" title="Actualiser">
+        <i data-lucide="refresh-cw"></i>
+    </button>
+    <button class="tool-btn" id="toggle-terminal" title="Terminal (Ctrl+`)">
+        <i data-lucide="terminal"></i> <span id="btn-text-terminal">Terminal</span>
+    </button>
+    <div class="toolbar-sep"></div>
+    <!-- GitHub Dropdown -->
+    <div class="git-dropdown-container" style="position: relative; display: inline-block;">
+        <button class="tool-btn" id="git-btn" title="GitHub Operations">
+            <i data-lucide="github"></i> <span>Git</span> <i data-lucide="chevron-down" style="width: 12px; height: 12px; margin-left: 2px;"></i>
+        </button>
+        <div class="dropdown-menu" id="git-dropdown-menu">
+            <button class="dropdown-item" id="git-pull-btn">
+                <i data-lucide="download"></i> <span id="lbl-git-pull">Git Pull</span>
+            </button>
+            <button class="dropdown-item" id="git-push-btn">
+                <i data-lucide="upload"></i> <span id="lbl-git-push">Git Push</span>
+            </button>
+        </div>
+    </div>
+    <div class="toolbar-sep"></div>
+    <button class="tool-btn" id="settings-btn" title="Paramètres">
+        <i data-lucide="settings"></i> <span id="btn-text-settings">Paramètres</span>
+    </button>
+    <div class="toolbar-sep"></div>
+    <!-- Android Emulator Dropdown -->
+    <div class="android-dropdown-container" style="position: relative; display: none;">
+        <button class="tool-btn" id="android-btn" title="Android Virtual Devices">
+            <i data-lucide="smartphone"></i> <span>Android</span> <i data-lucide="chevron-down" style="width: 12px; height: 12px; margin-left: 2px;"></i>
+        </button>
+        <div class="dropdown-menu" id="android-dropdown-menu">
+            <button class="dropdown-item" id="android-detect-btn">
+                <i data-lucide="refresh-cw"></i> <span id="lbl-android-detect">Détecter/Rafraîchir</span>
+            </button>
+            <div class="dropdown-divider" style="height: 1px; background: var(--border); margin: 4px 0;"></div>
+            <div id="android-emulators-list">
+                <div style="padding: 8px 12px; font-size: 11px; color: var(--text-dark); font-style: italic;" id="lbl-android-no-avd">Aucun détecté</div>
+            </div>
+        </div>
+    </div>
     <div class="toolbar-spacer"></div>
     <span id="save-indicator" class="save-badge"></span>
 </div>
@@ -52,13 +102,13 @@
 
         <!-- File Search -->
         <div class="file-search-bar">
-            <span class="search-icon">🔍</span>
+            <i data-lucide="search" class="search-icon" style="width: 14px; height: 14px;"></i>
             <input type="text" id="file-search" placeholder="Rechercher (Ctrl+P)…" autocomplete="off" spellcheck="false">
         </div>
 
         <div class="file-tree-container">
             <div class="file-tree" id="file-tree">
-                <div class="empty-state">Ouvrez un dossier pour commencer</div>
+                <div class="empty-state" id="lbl-empty-state">Ouvrez un dossier pour commencer</div>
             </div>
         </div>
     </aside>
@@ -91,18 +141,18 @@
                 <span class="sep">|</span>
                 <span id="file-language">Plain Text</span>
                 <span class="sep">|</span>
-                <span class="status-hint">Ctrl+S • Sauvegarder &nbsp;|&nbsp; Ctrl+` • Terminal</span>
+                <span class="status-hint" id="lbl-status-hint">Ctrl+S • Sauvegarder &nbsp;|&nbsp; Ctrl+` • Terminal</span>
             </div>
         </div>
 
         <!-- Terminal panel (collapsible bottom) -->
         <div class="terminal-panel" id="terminal-panel">
             <div class="terminal-header">
-                <span>⬛ Terminal</span>
+                <span><i data-lucide="terminal" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"></i><span id="lbl-terminal-title">Terminal</span></span>
                 <div class="term-actions">
                     <span class="term-hint">Cwd: <span id="term-cwd">—</span></span>
-                    <button class="icon-btn" id="clear-terminal" title="Effacer">🗑</button>
-                    <button class="icon-btn" id="toggle-terminal" title="Réduire">✕</button>
+                    <button class="icon-btn" id="clear-terminal" title="Effacer"><i data-lucide="trash-2"></i></button>
+                    <button class="icon-btn" id="close-terminal-panel" title="Réduire"><i data-lucide="chevron-down"></i></button>
                 </div>
             </div>
             <div class="terminal-output" id="terminal-output"></div>
@@ -116,10 +166,10 @@
     <!-- Agent Panel -->
     <aside class="agent-panel" id="agent-panel">
         <div class="panel-header">
-            <h3>🤖 AI Agent</h3>
+            <h3 id="lbl-ai-agent"><i data-lucide="bot" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></i> Agent CobraBub</h3>
             <div class="panel-controls">
-                <button class="icon-btn" id="agent-settings" title="Configurer">⚙️</button>
-                <button class="icon-btn" id="toggle-agent-panel" title="Réduire">◀</button>
+                <button class="icon-btn" id="agent-settings" title="Configurer"><i data-lucide="settings"></i></button>
+                <button class="icon-btn" id="toggle-agent-panel" title="Réduire"><i data-lucide="chevron-right"></i></button>
             </div>
         </div>
 
@@ -135,39 +185,39 @@
                 <option value="vllm">⚫ vLLM</option>
                 <option value="custom">⚙️ Custom API</option>
             </select>
-            <button class="btn-configure" id="configure-model">⚙️ Config</button>
+            <button class="btn-configure" id="configure-model"><i data-lucide="settings" style="width: 12px; height: 12px; vertical-align: middle;"></i> <span id="lbl-btn-config">Config</span></button>
         </div>
 
         <!-- Agent capabilities hint -->
         <div class="agent-caps">
-            <span class="cap">📂 Arborescence</span>
-            <span class="cap">📝 Écrire fichiers</span>
-            <span class="cap">▶ Exécuter CMD</span>
+            <span class="cap" id="cap-tree"><i data-lucide="folder-tree" style="width:10px; height:10px; vertical-align: middle; margin-right: 2px;"></i> Arborescence</span>
+            <span class="cap" id="cap-write"><i data-lucide="file-edit" style="width:10px; height:10px; vertical-align: middle; margin-right: 2px;"></i> Écrire</span>
+            <span class="cap" id="cap-cmd"><i data-lucide="terminal" style="width:10px; height:10px; vertical-align: middle; margin-right: 2px;"></i> Commandes</span>
         </div>
 
         <!-- Chat -->
         <div class="agent-chat">
             <div class="chat-messages" id="chat-messages">
-                <div class="message system">
+                <div class="message system" id="lbl-welcome-msg">
                     👋 <strong>CobraBub IDE</strong> — Ouvrez un dossier, configurez votre clé API, puis demandez à l'agent d'analyser votre projet ou d'écrire du code.
                 </div>
             </div>
             <div class="chat-input-area" style="position: relative;">
                 <div class="media-dropdown" id="media-dropdown">
-                    <button class="dropdown-item" id="btn-attach-file">🖼️ Joindre une image</button>
-                    <button class="dropdown-item" id="btn-capture-screen">📸 Capturer l'écran</button>
+                    <button class="dropdown-item" id="btn-attach-file"><i data-lucide="image" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;"></i><span id="lbl-attach-image">Joindre une image</span></button>
+                    <button class="dropdown-item" id="btn-capture-screen"><i data-lucide="aperture" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 6px;"></i><span id="lbl-capture-screen">Capturer l'écran</span></button>
                 </div>
                 <div class="attachment-list" id="attachment-list"></div>
                 <div class="chat-input-row" style="display: flex; gap: 6px; align-items: flex-start;">
-                    <button class="btn-add-media" id="add-media-btn" title="Ajouter contexte média">+</button>
+                    <button class="btn-add-media" id="add-media-btn" title="Ajouter contexte média"><i data-lucide="plus"></i></button>
                     <textarea id="chat-input" placeholder="Posez une question… (Entrée pour envoyer, Maj+Entrée pour nouvelle ligne)" rows="3" style="flex: 1;"></textarea>
                 </div>
                 <div class="chat-actions">
                     <label class="auto-agent-label" title="L'agent exécute les modifications et commandes de façon autonome" style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text2); cursor: pointer; margin-right: auto; user-select: none;">
-                        <input type="checkbox" id="autonomous-mode" style="cursor: pointer;"> Autonome
+                        <input type="checkbox" id="autonomous-mode" style="cursor: pointer;"> <span id="lbl-autonomous">Autonome</span>
                     </label>
                     <button class="btn-send" id="send-message">Envoyer</button>
-                    <button class="btn-agent" id="run-agent" title="Mode agent — lit les fichiers et peut écrire du code">🤖 Agent</button>
+                    <button class="btn-agent" id="run-agent" title="Mode agent — lit les fichiers et peut écrire du code"><i data-lucide="play" style="width:12px; height:12px; vertical-align: middle; margin-right: 2px;"></i> <span id="lbl-btn-agent">Agent</span></button>
                 </div>
                 <input type="file" id="media-file-input" accept="image/*" style="display:none">
             </div>
@@ -175,7 +225,7 @@
 
         <!-- Tasks -->
         <div class="agent-tasks">
-            <div class="task-list-header">Tâches actives</div>
+            <div class="task-list-header" id="lbl-active-tasks">Tâches actives</div>
             <div class="task-list" id="task-list"></div>
         </div>
     </aside>
@@ -195,55 +245,127 @@
 
 </div><!-- .app-container -->
 
-<!-- Context menu placeholder (created dynamically) -->
-
 <!-- ── Config Modal ──────────────────────────────────────────────────────── -->
 <div class="modal" id="config-modal">
     <div class="modal-content modal-large">
         <div class="modal-header">
-            <h3>⚙️ Configuration AI</h3>
+            <h3 id="lbl-config-title">⚙️ Configuration</h3>
             <button class="close-btn" id="close-modal">×</button>
         </div>
-        <div class="modal-body">
-            <div class="provider-card">
+        
+        <!-- Segmented Tab Navigation -->
+        <div class="modal-tabs">
+            <button class="modal-tab-btn active" data-tab="tab-ai"><i data-lucide="cpu" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> <span id="tab-title-ai">Modèles AI</span></button>
+            <button class="modal-tab-btn" data-tab="tab-appearance"><i data-lucide="palette" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> <span id="tab-title-appearance">Apparence & Langues</span></button>
+            <button class="modal-tab-btn" data-tab="tab-github"><i data-lucide="github" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> <span id="tab-title-github">GitHub</span></button>
+            <button class="modal-tab-btn" data-tab="tab-android"><i data-lucide="smartphone" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> <span id="tab-title-android">Android</span></button>
+        </div>
+        
+        <div class="modal-body" style="max-height: 480px; overflow-y: auto;">
+            <!-- Tab AI -->
+            <div class="modal-tab-content active" id="tab-ai">
+                <div class="provider-card">
+                    <div class="form-group">
+                        <label id="lbl-provider">🔌 Fournisseur :</label>
+                        <select id="model-type-config">
+                            <option value="anthropic">🔵 Anthropic — Claude (Recommandé)</option>
+                            <option value="openai">🟢 OpenAI — GPT</option>
+                            <option value="gemini">🔴 Google — Gemini</option>
+                            <option value="qwen">🟠 Alibaba — Qwen</option>
+                            <option value="ollama">⚫ Ollama — Local (gratuit, sans clé API)</option>
+                            <option value="lmstudio">⚫ LM Studio — Local (gratuit, sans clé API)</option>
+                            <option value="vllm">⚫ vLLM — Local</option>
+                            <option value="custom">⚙️ API personnalisée (compatible OpenAI)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label id="lbl-api-url">🌐 URL API : <span class="url-badge">Auto</span></label>
+                        <input type="text" id="base-url" placeholder="Auto-remplie">
+                    </div>
+                </div>
                 <div class="form-group">
-                    <label>🔌 Fournisseur :</label>
-                    <select id="model-type-config">
-                        <option value="anthropic">🔵 Anthropic — Claude (Recommandé)</option>
-                        <option value="openai">🟢 OpenAI — GPT</option>
-                        <option value="gemini">🔴 Google — Gemini</option>
-                        <option value="qwen">🟠 Alibaba — Qwen</option>
-                        <option value="ollama">⚫ Ollama — Local (gratuit, sans clé API)</option>
-                        <option value="lmstudio">⚫ LM Studio — Local (gratuit, sans clé API)</option>
-                        <option value="vllm">⚫ vLLM — Local</option>
-                        <option value="custom">⚙️ API personnalisée (compatible OpenAI)</option>
+                    <label id="lbl-model">🧠 Modèle :</label>
+                    <input type="text" id="model-name" placeholder="claude-haiku-4-5" list="model-suggestions" autocomplete="off">
+                    <datalist id="model-suggestions">
+                        <option value="claude-haiku-4-5"><option value="claude-sonnet-4-5">
+                        <option value="claude-opus-4-5"><option value="claude-3-5-haiku-20241022">
+                        <option value="claude-3-5-sonnet-20241022"><option value="claude-3-haiku-20240307">
+                        <option value="gpt-4o-mini"><option value="gpt-4o">
+                        <option value="gemini-1.5-flash"><option value="gemini-1.5-pro">
+                    </datalist>
+                    <small class="hint" id="hint-model-choice">Choisissez dans la liste ↑ ou tapez un nom de modèle</small>
+                </div>
+                <div class="form-group" id="api-key-group">
+                    <label id="lbl-api-key">🔑 Clé API :</label>
+                    <div class="api-key-row">
+                        <input type="password" id="api-key" placeholder="sk-ant-… / sk-… / AIza…">
+                        <button type="button" class="btn-toggle-key" id="toggle-key-btn"
+                            onclick="const f=document.getElementById('api-key');f.type=f.type==='password'?'text':'password';this.textContent=f.type==='password'?'👁':'🙈';">👁</button>
+                    </div>
+                    <small class="hint" id="api-key-hint">Clé API sur <strong>console.anthropic.com</strong></small>
+                </div>
+            </div>
+            
+            <!-- Tab Appearance -->
+            <div class="modal-tab-content" id="tab-appearance" style="display: none;">
+                <div class="form-group">
+                    <label id="lbl-theme">🎨 Thème Visuel :</label>
+                    <select id="theme-selector">
+                        <option value="cyber-purple">🌌 Cyber Purple</option>
+                        <option value="midnight-blue">🌑 Midnight Blue</option>
+                        <option value="emerald-synth">📟 Emerald Synth</option>
+                        <option value="amber-cyber">🔸 Amber Cyber</option>
+                        <option value="light-mode">☀️ Light Mode</option>
                     </select>
                 </div>
+                <div class="form-group" style="margin-top: 10px;">
+                    <label id="lbl-lang">🌐 Langue :</label>
+                    <select id="language-selector">
+                        <option value="fr">🇫🇷 Français</option>
+                        <option value="en">🇺🇸 English</option>
+                        <option value="es">🇪🇸 Español</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                    <label id="lbl-editor-text-color">✍️ Couleur du texte de l'éditeur :</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="color" id="editor-text-color-input" style="width: 54px; height: 36px; padding: 2px; cursor: pointer; border-radius: var(--radius); border: 1px solid var(--border); background: transparent;">
+                        <button class="btn-cancel" id="btn-reset-editor-text-color" style="padding: 0 16px; font-size: 12px; border-radius: var(--radius); border: 1px solid var(--border); height: 36px; line-height: 34px;">Réinitialiser</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab GitHub -->
+            <div class="modal-tab-content" id="tab-github" style="display: none;">
                 <div class="form-group">
-                    <label>🌐 URL API : <span class="url-badge">Auto</span></label>
-                    <input type="text" id="base-url" placeholder="Auto-remplie" style="font-size:11px;font-family:monospace;opacity:0.7;">
+                    <label id="lbl-github-token">🔑 Token d'Accès Personnel (PAT) :</label>
+                    <input type="password" id="github-token" placeholder="ghp_...">
+                    <small class="hint" id="hint-github-token">Token requis pour le push/pull automatique sans invite de commande.</small>
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                    <label id="lbl-github-user">👤 Nom d'utilisateur GitHub :</label>
+                    <input type="text" id="github-user" placeholder="octocat">
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                    <label id="lbl-github-email">📧 Adresse e-mail GitHub :</label>
+                    <input type="email" id="github-email" placeholder="octocat@github.com">
+                    <small class="hint" id="hint-github-config">Sert à configurer localement Git pour vos commits.</small>
                 </div>
             </div>
-            <div class="form-group">
-                <label>🧠 Modèle :</label>
-                <input type="text" id="model-name" placeholder="claude-haiku-4-5" list="model-suggestions" autocomplete="off">
-                <datalist id="model-suggestions">
-                    <option value="claude-haiku-4-5"><option value="claude-sonnet-4-5">
-                    <option value="claude-opus-4-5"><option value="claude-3-5-haiku-20241022">
-                    <option value="claude-3-5-sonnet-20241022"><option value="claude-3-haiku-20240307">
-                    <option value="gpt-4o-mini"><option value="gpt-4o">
-                    <option value="gemini-1.5-flash"><option value="gemini-1.5-pro">
-                </datalist>
-                <small class="hint">Choisissez dans la liste ↑ ou tapez un nom de modèle</small>
-            </div>
-            <div class="form-group" id="api-key-group">
-                <label>🔑 Clé API :</label>
-                <div class="api-key-row">
-                    <input type="password" id="api-key" placeholder="sk-ant-… / sk-… / AIza…">
-                    <button type="button" class="btn-toggle-key" id="toggle-key-btn"
-                        onclick="const f=document.getElementById('api-key');f.type=f.type==='password'?'text':'password';this.textContent=f.type==='password'?'👁':'🙈';">👁</button>
+
+            <!-- Tab Android -->
+            <div class="modal-tab-content" id="tab-android" style="display: none;">
+                <div class="form-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="android-autodetect-checkbox" style="width: auto; cursor: pointer;">
+                    <label for="android-autodetect-checkbox" id="lbl-android-autodetect" style="cursor: pointer;">Détection automatique du projet Android</label>
                 </div>
-                <small class="hint" id="api-key-hint">Clé API sur <strong>console.anthropic.com</strong></small>
+                <div class="form-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin-top: 10px;">
+                    <input type="checkbox" id="android-always-show-checkbox" style="width: auto; cursor: pointer;">
+                    <label for="android-always-show-checkbox" id="lbl-android-always-show" style="cursor: pointer;">Toujours afficher le menu Android dans la barre d'outils</label>
+                </div>
+                <div style="margin-top: 10px; padding: 10px; border-radius: var(--radius); background: rgba(255,255,255,0.02); border: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); line-height: 1.4;">
+                    <p id="lbl-android-help">Cette option permet d'analyser le dossier ouvert pour détecter des fichiers spécifiques (comme <code>build.gradle</code> ou <code>AndroidManifest.xml</code>). Si détecté, le menu Android s'active pour vous permettre de lancer un émulateur en un clic.</p>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -257,7 +379,7 @@
 <div class="modal" id="screen-capture-modal">
     <div class="modal-content modal-large">
         <div class="modal-header">
-            <h3>📸 Capturer l'écran ou une fenêtre</h3>
+            <h3 id="lbl-capture-title">📸 Capturer l'écran ou une fenêtre</h3>
             <button class="close-btn" id="close-capture-modal">×</button>
         </div>
         <div class="modal-body">
@@ -267,6 +389,44 @@
         </div>
         <div class="modal-footer">
             <button class="btn-cancel" id="cancel-capture">Annuler</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Custom Confirmation Modal ────────────────────────────────────────────── -->
+<div class="modal" id="confirm-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="confirm-title">Confirmation d'Action</h3>
+            <button class="close-btn" id="confirm-close-btn">×</button>
+        </div>
+        <div class="modal-body" style="gap: 12px;">
+            <div id="confirm-message" style="font-size: 14px; line-height: 1.5; font-weight: 500;">Message...</div>
+            <pre id="confirm-details" style="display: none; background: rgba(0,0,0,0.3); padding: 10px; border-radius: var(--radius); font-family: var(--mono); font-size: 12px; max-height: 180px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; border: 1px solid var(--border);"></pre>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" id="confirm-cancel-btn">Annuler</button>
+            <button class="btn-primary" id="confirm-ok-btn">Confirmer</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Custom Prompt Modal ────────────────────────────────────────────────── -->
+<div class="modal" id="prompt-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="prompt-title">Saisie requise</h3>
+            <button class="close-btn" id="prompt-close-btn">×</button>
+        </div>
+        <div class="modal-body" style="gap: 12px;">
+            <div id="prompt-message" style="font-size: 14px; line-height: 1.5; font-weight: 500;">Message...</div>
+            <div class="form-group">
+                <input type="text" id="prompt-input" style="width: 100%;" autocomplete="off">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" id="prompt-cancel-btn">Annuler</button>
+            <button class="btn-primary" id="prompt-ok-btn">Confirmer</button>
         </div>
     </div>
 </div>
