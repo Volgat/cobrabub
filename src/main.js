@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -6,6 +6,125 @@ const http = require('http');
 const { exec, spawn } = require('child_process');
 
 let mainWindow;
+
+// ─── Native Menu Translations ──────────────────────────────────────────────────
+const MENU_TRANSLATIONS = {
+  fr: {
+    file: 'Fichier',
+    quit: 'Quitter',
+    edit: 'Édition',
+    undo: 'Annuler',
+    redo: 'Rétablir',
+    cut: 'Couper',
+    copy: 'Copier',
+    paste: 'Coller',
+    selectAll: 'Tout sélectionner',
+    view: 'Affichage',
+    reload: 'Recharger',
+    forceReload: 'Forcer le rechargement',
+    devTools: 'Outils de développement',
+    resetZoom: 'Taille réelle',
+    zoomIn: 'Zoom avant',
+    zoomOut: 'Zoom arrière',
+    fullScreen: 'Plein écran',
+    help: 'Aide',
+    about: 'Documentation & À propos de AmeForge'
+  },
+  en: {
+    file: 'File',
+    quit: 'Quit',
+    edit: 'Edit',
+    undo: 'Undo',
+    redo: 'Redo',
+    cut: 'Cut',
+    copy: 'Copy',
+    paste: 'Paste',
+    selectAll: 'Select All',
+    view: 'View',
+    reload: 'Reload',
+    forceReload: 'Force Reload',
+    devTools: 'Toggle Developer Tools',
+    resetZoom: 'Actual Size',
+    zoomIn: 'Zoom In',
+    zoomOut: 'Zoom Out',
+    fullScreen: 'Toggle Full Screen',
+    help: 'Help',
+    about: 'Documentation & About AmeForge'
+  },
+  es: {
+    file: 'Archivo',
+    quit: 'Salir',
+    edit: 'Edición',
+    undo: 'Deshacer',
+    redo: 'Rehacer',
+    cut: 'Cortar',
+    copy: 'Copiar',
+    paste: 'Pegar',
+    selectAll: 'Seleccionar todo',
+    view: 'Ver',
+    reload: 'Recargar',
+    forceReload: 'Forzar recarga',
+    devTools: 'Herramientas de desarrollo',
+    resetZoom: 'Tamaño real',
+    zoomIn: 'Acercar',
+    zoomOut: 'Alejar',
+    fullScreen: 'Pantalla completa',
+    help: 'Ayuda',
+    about: 'Documentación y Acerca de AmeForge'
+  }
+};
+
+function createMenu(lang) {
+  const dict = MENU_TRANSLATIONS[lang] || MENU_TRANSLATIONS.fr;
+  const template = [
+    {
+      label: dict.file,
+      submenu: [
+        { role: 'quit', label: dict.quit }
+      ]
+    },
+    {
+      label: dict.edit,
+      submenu: [
+        { role: 'undo', label: dict.undo },
+        { role: 'redo', label: dict.redo },
+        { type: 'separator' },
+        { role: 'cut', label: dict.cut },
+        { role: 'copy', label: dict.copy },
+        { role: 'paste', label: dict.paste },
+        { role: 'selectAll', label: dict.selectAll }
+      ]
+    },
+    {
+      label: dict.view,
+      submenu: [
+        { role: 'reload', label: dict.reload },
+        { role: 'forceReload', label: dict.forceReload },
+        { role: 'toggleDevTools', label: dict.devTools },
+        { type: 'separator' },
+        { role: 'resetZoom', label: dict.resetZoom },
+        { role: 'zoomIn', label: dict.zoomIn },
+        { role: 'zoomOut', label: dict.zoomOut },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: dict.fullScreen }
+      ]
+    },
+    {
+      label: dict.help,
+      submenu: [
+        {
+          label: dict.about,
+          click: async () => {
+            await shell.openExternal('https://ameforge.tech/#about');
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -24,6 +143,8 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   if (process.argv.includes('--dev')) mainWindow.webContents.openDevTools();
   mainWindow.on('closed', () => { mainWindow = null; });
+
+  createMenu(modelConfig.language || 'fr');
 }
 
 app.whenReady().then(createWindow);
@@ -58,6 +179,7 @@ try {
 ipcMain.handle('save-model-config', async (event, config) => {
   modelConfig = { ...modelConfig, ...config };
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(modelConfig, null, 2), 'utf-8');
+  createMenu(modelConfig.language || 'fr');
   return { success: true };
 });
 ipcMain.handle('get-model-config', async () => modelConfig);
