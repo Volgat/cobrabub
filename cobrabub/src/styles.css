@@ -125,10 +125,51 @@ body {
     letter-spacing: 0.5px;
 }
 
+.header-actions {
+    display: flex;
+    gap: 4px;
+}
+
 .sidebar-actions {
     padding: 8px;
     display: flex;
     gap: 4px;
+    flex-wrap: wrap;
+}
+
+/* GitHub Section in Sidebar */
+.github-section {
+    padding: 12px;
+    margin: 8px;
+    background: linear-gradient(135deg, rgba(88, 166, 255, 0.08) 0%, rgba(88, 166, 255, 0.02) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.github-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.github-icon {
+    font-size: 16px;
+}
+
+.github-actions {
+    display: flex;
+    gap: 4px;
+}
+
+/* File Tree Container with proper scrolling */
+.file-tree-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .file-tree {
@@ -144,6 +185,7 @@ body {
     font-size: 14px;
 }
 
+/* File Tree */
 .file-item {
     padding: 6px 10px;
     cursor: pointer;
@@ -174,6 +216,25 @@ body {
 
 .folder-item {
     font-weight: 600;
+}
+
+/* Nested file tree structure */
+.file-tree .file-tree {
+    margin-left: 16px;
+    border-left: 1px dashed var(--border-color);
+    padding-left: 8px;
+}
+
+.file-item.expanded > .file-icon::before {
+    content: '▼ ';
+    font-size: 10px;
+    margin-right: 4px;
+}
+
+.file-item.collapsed > .file-icon::before {
+    content: '▶ ';
+    font-size: 10px;
+    margin-right: 4px;
 }
 
 /* Main Content */
@@ -325,6 +386,38 @@ body {
     border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 13px;
+}
+
+/* Attached Files Section */
+.attached-files {
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-color);
+    min-height: 0;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.attached-file-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    margin: 4px;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.attached-file-item .remove-file {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.attached-file-item .remove-file:hover {
+    opacity: 1;
+    color: var(--error-color);
 }
 
 .agent-chat {
@@ -663,3 +756,98 @@ body {
 .function { color: #dcdcaa; }
 .number { color: #b5cea8; }
 .operator { color: #d4d4d4; }
+
+/* Modal Large */
+.modal-content.modal-large {
+    width: 700px;
+    max-width: 95%;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.form-group h4 {
+    font-size: 13px;
+    margin: 16px 0 8px 0;
+    color: var(--accent-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+}
+
+.github-config,
+.encoding-config {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* File Drop Zone */
+.file-drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: var(--bg-tertiary);
+}
+
+.file-drop-zone:hover,
+.file-drop-zone.drag-over {
+    border-color: var(--accent-color);
+    background-color: rgba(88, 166, 255, 0.05);
+}
+
+.file-drop-zone p {
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.attached-files-list {
+    margin-top: 16px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* GitHub Status */
+.github-status {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.github-status.success {
+    background-color: rgba(63, 185, 80, 0.1);
+    color: var(--success-color);
+    border: 1px solid var(--success-color);
+}
+
+.github-status.error {
+    background-color: rgba(248, 81, 73, 0.1);
+    color: var(--error-color);
+    border: 1px solid var(--error-color);
+}
+
+.github-status.loading {
+    background-color: rgba(88, 166, 255, 0.1);
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+}
+
+/* Panel Controls with more buttons */
+.panel-controls {
+    display: flex;
+    gap: 4px;
+}
