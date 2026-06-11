@@ -1,6 +1,30 @@
-# CobraBub - AI-Powered Desktop IDE
+<p align="center">
+  <img src="assets/logo.png" alt="CobraBub Logo" width="120" height="120" style="border-radius: 18%; box-shadow: 0 4px 20px rgba(124, 106, 247, 0.3);" />
+</p>
+
+<h1 align="center">CobraBub IDE</h1>
+
+<p align="center">
+  <strong>An AI-Augmented & Premium Desktop IDE</strong><br/>
+  <em>Developed with ❤️ by AmeForge</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Volgat/cobrabub/releases/latest">
+    <img src="https://img.shields.io/github/v/release/Volgat/cobrabub?style=flat-square&color=blueviolet" alt="Latest Release" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/Volgat/cobrabub?style=flat-square&color=blue" alt="License" />
+  </a>
+  <a href="https://github.com/Volgat/cobrabub/issues">
+    <img src="https://img.shields.io/github/issues/Volgat/cobrabub?style=flat-square&color=red" alt="Issues" />
+  </a>
+</p>
+
+---
 
 🚀 **CobraBub** est un environnement de développement intégré (IDE) desktop complet avec un système d'agent IA, similaire à Cursor et Antigravity de Google. Il permet de travailler sur des fichiers de projets complexes tout en bénéficiant de l'assistance d'intelligences artificielles locales ou via API.
+
 
 ## ✨ Fonctionnalités Principales
 
