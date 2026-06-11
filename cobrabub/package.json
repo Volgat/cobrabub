@@ -1,0 +1,47 @@
+{
+  "name": "cobrabub",
+  "version": "1.0.0",
+  "description": "Desktop IDE with agentic AI system - Like Cursor/Antigravity",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "server": "cd agent-server && python3 server.py"
+  },
+  "keywords": ["electron", "ai", "ide", "agent", "llm"],
+  "author": "CobraBub Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "openai": "^4.20.0",
+    "axios": "^1.6.0",
+    "ws": "^8.14.0"
+  },
+  "build": {
+    "appId": "com.cobrabub.ide",
+    "productName": "CobraBub",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": "AppImage",
+      "category": "Development"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}
