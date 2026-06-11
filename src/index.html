@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CobraBub IDE</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>if(typeof hljs!=='undefined') hljs.configure({ ignoreUnescapedHTML:true });</script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app-container">
+
+<!-- ── Title Bar ──────────────────────────────────────────────────────────── -->
+<div class="title-bar">
+    <div class="title-brand" style="display: flex; align-items: center; gap: 8px; font-family: var(--ui); font-weight: 700;">
+        <img src="../assets/logo.png" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 10px rgba(124,106,247,0.4);">
+        CobraBub IDE
+    </div>
+    <div class="title-bar-drag"></div>
+    <div class="window-controls">
+        <button class="window-control min" id="minimize-btn">−</button>
+        <button class="window-control max" id="maximize-btn">□</button>
+        <button class="window-control cls" id="close-btn">×</button>
+    </div>
+</div>
+
+<!-- ── Toolbar ─────────────────────────────────────────────────────────────── -->
+<div class="toolbar">
+    <button class="tool-btn primary" id="open-folder-btn" title="Ouvrir dossier">📁 Ouvrir Dossier</button>
+    <button class="tool-btn primary" id="open-file-btn" title="Ouvrir fichier">📄 Ouvrir Fichier</button>
+    <div class="toolbar-sep"></div>
+    <button class="tool-btn" id="save-file-btn" title="Sauvegarder (Ctrl+S)">💾 Sauvegarder</button>
+    <button class="tool-btn" id="new-file-btn" title="Nouveau fichier">📄 Nouveau</button>
+    <button class="tool-btn" id="new-folder-btn" title="Nouveau dossier">📂 Dossier</button>
+    <div class="toolbar-sep"></div>
+    <button class="tool-btn" id="refresh-files" title="Actualiser">🔄</button>
+    <button class="tool-btn" id="toggle-terminal" title="Terminal (Ctrl+`)">⬛ Terminal</button>
+    <div class="toolbar-spacer"></div>
+    <span id="save-indicator" class="save-badge"></span>
+</div>
+
+<!-- ── Main Layout ────────────────────────────────────────────────────────── -->
+<div class="main-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <span id="project-name" class="project-name">Aucun projet</span>
+        </div>
+
+        <!-- File Search -->
+        <div class="file-search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="file-search" placeholder="Rechercher (Ctrl+P)…" autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="file-tree-container">
+            <div class="file-tree" id="file-tree">
+                <div class="empty-state">Ouvrez un dossier pour commencer</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Editor + Terminal (vertical split) -->
+    <main class="main-content">
+        <!-- Tab bar -->
+        <div class="tab-bar">
+            <div class="tabs" id="tabs"></div>
+        </div>
+
+        <!-- Code editor -->
+        <div class="editor-container" id="editor-container">
+            <div id="editor-wrapper">
+                <div id="line-numbers"></div>
+                <div id="editor-area">
+                    <pre id="highlight-layer" aria-hidden="true"><code></code></pre>
+                    <textarea
+                        id="code-editor"
+                        placeholder="Ouvrez un fichier pour commencer à coder…"
+                        spellcheck="false"
+                        autocapitalize="off"
+                        autocomplete="off"
+                        autocorrect="off">
+                    </textarea>
+                </div>
+            </div>
+            <div class="editor-status">
+                <span id="cursor-position">Ln 1, Col 1</span>
+                <span class="sep">|</span>
+                <span id="file-language">Plain Text</span>
+                <span class="sep">|</span>
+                <span class="status-hint">Ctrl+S • Sauvegarder &nbsp;|&nbsp; Ctrl+` • Terminal</span>
+            </div>
+        </div>
+
+        <!-- Terminal panel (collapsible bottom) -->
+        <div class="terminal-panel" id="terminal-panel">
+            <div class="terminal-header">
+                <span>⬛ Terminal</span>
+                <div class="term-actions">
+                    <span class="term-hint">Cwd: <span id="term-cwd">—</span></span>
+                    <button class="icon-btn" id="clear-terminal" title="Effacer">🗑</button>
+                    <button class="icon-btn" id="toggle-terminal" title="Réduire">✕</button>
+                </div>
+            </div>
+            <div class="terminal-output" id="terminal-output"></div>
+            <div class="terminal-input-row">
+                <span class="term-prompt">$</span>
+                <input type="text" id="terminal-input" placeholder="Entrez une commande…" spellcheck="false" autocomplete="off">
+            </div>
+        </div>
+    </main>
+
+    <!-- Agent Panel -->
+    <aside class="agent-panel" id="agent-panel">
+        <div class="panel-header">
+            <h3>🤖 AI Agent</h3>
+            <div class="panel-controls">
+                <button class="icon-btn" id="agent-settings" title="Configurer">⚙️</button>
+                <button class="icon-btn" id="toggle-agent-panel" title="Réduire">◀</button>
+            </div>
+        </div>
+
+        <!-- Model selector -->
+        <div class="model-section">
+            <select id="model-type" title="Fournisseur">
+                <option value="anthropic">🔵 Anthropic (Claude)</option>
+                <option value="openai">🟢 OpenAI (GPT)</option>
+                <option value="gemini">🔴 Google Gemini</option>
+                <option value="qwen">🟠 Alibaba Qwen</option>
+                <option value="ollama">⚫ Ollama (Local)</option>
+                <option value="lmstudio">⚫ LM Studio</option>
+                <option value="vllm">⚫ vLLM</option>
+                <option value="custom">⚙️ Custom API</option>
+            </select>
+            <button class="btn-configure" id="configure-model">⚙️ Config</button>
+        </div>
+
+        <!-- Agent capabilities hint -->
+        <div class="agent-caps">
+            <span class="cap">📂 Arborescence</span>
+            <span class="cap">📝 Écrire fichiers</span>
+            <span class="cap">▶ Exécuter CMD</span>
+        </div>
+
+        <!-- Chat -->
+        <div class="agent-chat">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message system">
+                    👋 <strong>CobraBub IDE</strong> — Ouvrez un dossier, configurez votre clé API, puis demandez à l'agent d'analyser votre projet ou d'écrire du code.
+                </div>
+            </div>
+            <div class="chat-input-area" style="position: relative;">
+                <div class="media-dropdown" id="media-dropdown">
+                    <button class="dropdown-item" id="btn-attach-file">🖼️ Joindre une image</button>
+                    <button class="dropdown-item" id="btn-capture-screen">📸 Capturer l'écran</button>
+                </div>
+                <div class="attachment-list" id="attachment-list"></div>
+                <div class="chat-input-row" style="display: flex; gap: 6px; align-items: flex-start;">
+                    <button class="btn-add-media" id="add-media-btn" title="Ajouter contexte média">+</button>
+                    <textarea id="chat-input" placeholder="Posez une question… (Entrée pour envoyer, Maj+Entrée pour nouvelle ligne)" rows="3" style="flex: 1;"></textarea>
+                </div>
+                <div class="chat-actions">
+                    <label class="auto-agent-label" title="L'agent exécute les modifications et commandes de façon autonome" style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text2); cursor: pointer; margin-right: auto; user-select: none;">
+                        <input type="checkbox" id="autonomous-mode" style="cursor: pointer;"> Autonome
+                    </label>
+                    <button class="btn-send" id="send-message">Envoyer</button>
+                    <button class="btn-agent" id="run-agent" title="Mode agent — lit les fichiers et peut écrire du code">🤖 Agent</button>
+                </div>
+                <input type="file" id="media-file-input" accept="image/*" style="display:none">
+            </div>
+        </div>
+
+        <!-- Tasks -->
+        <div class="agent-tasks">
+            <div class="task-list-header">Tâches actives</div>
+            <div class="task-list" id="task-list"></div>
+        </div>
+    </aside>
+</div>
+
+<!-- ── Status Bar ──────────────────────────────────────────────────────────── -->
+<footer class="status-bar">
+    <div class="status-left">
+        <span id="connection-status" class="status-indicator disconnected">●</span>
+        <span id="agent-status">Non configuré</span>
+    </div>
+    <div class="status-center">🐍 CobraBub IDE</div>
+    <div class="status-right">
+        <span id="model-status">Aucun modèle</span>
+    </div>
+</footer>
+
+</div><!-- .app-container -->
+
+<!-- Context menu placeholder (created dynamically) -->
+
+<!-- ── Config Modal ──────────────────────────────────────────────────────── -->
+<div class="modal" id="config-modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3>⚙️ Configuration AI</h3>
+            <button class="close-btn" id="close-modal">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="provider-card">
+                <div class="form-group">
+                    <label>🔌 Fournisseur :</label>
+                    <select id="model-type-config">
+                        <option value="anthropic">🔵 Anthropic — Claude (Recommandé)</option>
+                        <option value="openai">🟢 OpenAI — GPT</option>
+                        <option value="gemini">🔴 Google — Gemini</option>
+                        <option value="qwen">🟠 Alibaba — Qwen</option>
+                        <option value="ollama">⚫ Ollama — Local (gratuit, sans clé API)</option>
+                        <option value="lmstudio">⚫ LM Studio — Local (gratuit, sans clé API)</option>
+                        <option value="vllm">⚫ vLLM — Local</option>
+                        <option value="custom">⚙️ API personnalisée (compatible OpenAI)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🌐 URL API : <span class="url-badge">Auto</span></label>
+                    <input type="text" id="base-url" placeholder="Auto-remplie" style="font-size:11px;font-family:monospace;opacity:0.7;">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>🧠 Modèle :</label>
+                <input type="text" id="model-name" placeholder="claude-haiku-4-5" list="model-suggestions" autocomplete="off">
+                <datalist id="model-suggestions">
+                    <option value="claude-haiku-4-5"><option value="claude-sonnet-4-5">
+                    <option value="claude-opus-4-5"><option value="claude-3-5-haiku-20241022">
+                    <option value="claude-3-5-sonnet-20241022"><option value="claude-3-haiku-20240307">
+                    <option value="gpt-4o-mini"><option value="gpt-4o">
+                    <option value="gemini-1.5-flash"><option value="gemini-1.5-pro">
+                </datalist>
+                <small class="hint">Choisissez dans la liste ↑ ou tapez un nom de modèle</small>
+            </div>
+            <div class="form-group" id="api-key-group">
+                <label>🔑 Clé API :</label>
+                <div class="api-key-row">
+                    <input type="password" id="api-key" placeholder="sk-ant-… / sk-… / AIza…">
+                    <button type="button" class="btn-toggle-key" id="toggle-key-btn"
+                        onclick="const f=document.getElementById('api-key');f.type=f.type==='password'?'text':'password';this.textContent=f.type==='password'?'👁':'🙈';">👁</button>
+                </div>
+                <small class="hint" id="api-key-hint">Clé API sur <strong>console.anthropic.com</strong></small>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" id="cancel-config">Annuler</button>
+            <button class="btn-primary" id="save-config">💾 Sauvegarder</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Screen Capture Modal ────────────────────────────────────────────────── -->
+<div class="modal" id="screen-capture-modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3>📸 Capturer l'écran ou une fenêtre</h3>
+            <button class="close-btn" id="close-capture-modal">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="screen-grid" id="screen-grid">
+                <!-- Dynamically filled with screen sources -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" id="cancel-capture">Annuler</button>
+        </div>
+    </div>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>
