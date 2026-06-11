@@ -64,29 +64,32 @@ class ModelProvider:
 
 
 class OpenAIProvider(ModelProvider):
-    """OpenAI API provider"""
+    """OpenAI API provider (also supports OpenAI-compatible APIs)"""
     
-    def __init__(self, api_key: str, base_url: Optional[str] = None):
+    def __init__(self, api_key: str, base_url: Optional[str] = None, model_name: str = "gpt-4"):
         if not OPENAI_AVAILABLE:
             raise ImportError("openai package not installed. Run: pip install openai")
         
         self.api_key = api_key
         self.base_url = base_url or "https://api.openai.com/v1"
+        self.model_name = model_name
         
-        if base_url:
-            openai.base_url = base_url
-        openai.api_key = api_key
+        # Configure OpenAI client with custom base URL for compatible APIs
+        self.client = openai.OpenAI(
+            api_key=api_key,
+            base_url=base_url if base_url else None
+        )
     
     def validate_config(self, config: Dict) -> bool:
-        return bool(config.get("api_key"))
+        return bool(config.get("api_key")) and bool(config.get("model_name"))
     
     async def generate(self, prompt: str, context: Dict) -> str:
         messages = self._build_messages(prompt, context)
         
         try:
             response = await asyncio.to_thread(
-                openai.ChatCompletion.create,
-                model=context.get("model_name", "gpt-4"),
+                self.client.chat.completions.create,
+                model=context.get("model_name", self.model_name),
                 messages=messages,
                 max_tokens=4096,
                 temperature=0.7
@@ -109,7 +112,7 @@ class OpenAIProvider(ModelProvider):
         if files:
             file_context = "Here are the current open files:\n\n"
             for file in files:
-                file_context += f"File: {file['name']}\n```{file['content']}```\n\n"
+                file_context += f"File: {file['name']}\n```\n{file['content']}\n```\n\n"
             
             messages.append({
                 "role": "user",
@@ -128,60 +131,118 @@ class OpenAIProvider(ModelProvider):
 class AnthropicProvider(ModelProvider):
     """Anthropic Claude API provider"""
     
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model_name: str = "claude-3-sonnet-20240229"):
         if not ANTHROPIC_AVAILABLE:
             raise ImportError("anthropic package not installed. Run: pip install anthropic")
         
         self.api_key = api_key
+        self.model_name = model_name
         self.client = anthropic.Anthropic(api_key=api_key)
     
     def validate_config(self, config: Dict) -> bool:
-        return bool(config.get("api_key"))
+        return bool(config.get("api_key")) and bool(config.get("model_name"))
     
     async def generate(self, prompt: str, context: Dict) -> str:
+        messages = self._build_messages(prompt, context)
+        
         try:
             response = await asyncio.to_thread(
                 self.client.messages.create,
-                model=context.get("model_name", "claude-3-sonnet-20240229"),
+                model=context.get("model_name", self.model_name),
                 max_tokens=4096,
                 system="You are an expert programming assistant integrated into CobraBub IDE.",
-                messages=[{"role": "user", "content": prompt}]
+                messages=messages
             )
             return response.content[0].text
         except Exception as e:
             raise Exception(f"Anthropic API error: {str(e)}")
+    
+    def _build_messages(self, prompt: str, context: Dict) -> List[Dict]:
+        messages = []
+        
+        # Add file context
+        files = context.get("files", [])
+        if files:
+            for file in files:
+                messages.append({
+                    "role": "user",
+                    "content": f"File: {file['name']}\n```\n{file['content']}\n```"
+                })
+        
+        # User prompt
+        messages.append({
+            "role": "user",
+            "content": prompt
+        })
+        
+        return messages
 
 
 class LocalModelProvider(ModelProvider):
-    """Local model provider (supports Ollama, LM Studio, etc.)"""
+    """Local model provider (supports Ollama, LM Studio, vLLM, etc.)"""
     
-    def __init__(self, base_url: str):
-        self.base_url = base_url
+    def __init__(self, base_url: str, model_name: str = "llama2"):
+        self.base_url = base_url.rstrip('/')
+        self.model_name = model_name
         self.session = None
     
     def validate_config(self, config: Dict) -> bool:
-        return bool(config.get("base_url"))
+        return bool(config.get("base_url")) and bool(config.get("model_name"))
     
     async def generate(self, prompt: str, context: Dict) -> str:
         import aiohttp
         
         try:
             async with aiohttp.ClientSession() as session:
+                # Try Ollama format first
                 payload = {
-                    "model": context.get("model_name", "llama2"),
+                    "model": context.get("model_name", self.model_name),
                     "prompt": prompt,
                     "stream": False,
-                    "max_tokens": 4096
+                    "options": {
+                        "temperature": 0.7,
+                        "max_tokens": 4096
+                    }
+                }
+                
+                # Try Ollama API endpoint
+                try:
+                    async with session.post(
+                        f"{self.base_url}/api/generate",
+                        json=payload,
+                        timeout=aiohttp.ClientTimeout(total=120)
+                    ) as response:
+                        result = await response.json()
+                        if "response" in result:
+                            return result["response"]
+                except Exception:
+                    pass
+                
+                # Try OpenAI-compatible format (LM Studio, vLLM, etc.)
+                payload = {
+                    "model": context.get("model_name", self.model_name),
+                    "messages": [
+                        {"role": "system", "content": "You are an expert programming assistant."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 4096,
+                    "temperature": 0.7,
+                    "stream": False
                 }
                 
                 async with session.post(
-                    f"{self.base_url}/api/generate",
-                    json=payload
+                    f"{self.base_url}/v1/chat/completions",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=120)
                 ) as response:
                     result = await response.json()
-                    return result.get("response", "")
+                    if "choices" in result and len(result["choices"]) > 0:
+                        return result["choices"][0]["message"]["content"]
+                    
         except Exception as e:
-            raise Exception(f"Local model error: {str(e)}")
+            raise Exception(f"Local model error ({self.base_url}): {str(e)}")
+        
+        raise Exception(f"Local model at {self.base_url} did not respond with valid format")
 
 
 class AgentServer:
@@ -204,25 +265,36 @@ class AgentServer:
             if provider_type == "openai":
                 self.current_provider = OpenAIProvider(
                     api_key=config.get("api_key", ""),
-                    base_url=config.get("baseUrl")
+                    base_url=config.get("baseUrl"),
+                    model_name=config.get("modelName", "gpt-4")
                 )
             elif provider_type == "anthropic":
                 self.current_provider = AnthropicProvider(
-                    api_key=config.get("api_key", "")
+                    api_key=config.get("api_key", ""),
+                    model_name=config.get("modelName", "claude-3-sonnet-20240229")
                 )
             elif provider_type == "local":
                 self.current_provider = LocalModelProvider(
-                    base_url=config.get("baseUrl", "http://localhost:11434")
+                    base_url=config.get("baseUrl", "http://localhost:11434"),
+                    model_name=config.get("modelName", "llama2")
                 )
-            else:
-                # Custom provider treated as OpenAI-compatible
+            elif provider_type == "custom":
+                # Custom provider treated as OpenAI-compatible API
                 self.current_provider = OpenAIProvider(
                     api_key=config.get("api_key", ""),
-                    base_url=config.get("baseUrl")
+                    base_url=config.get("baseUrl"),
+                    model_name=config.get("modelName", "custom-model")
+                )
+            else:
+                # Default to OpenAI-compatible API
+                self.current_provider = OpenAIProvider(
+                    api_key=config.get("api_key", ""),
+                    base_url=config.get("baseUrl"),
+                    model_name=config.get("modelName", "gpt-4")
                 )
             
             self.model_config = config
-            print(f"✓ Provider setup: {provider_type}")
+            print(f"✓ Provider setup: {provider_type} ({config.get('modelName', 'default')})")
             
         except Exception as e:
             print(f"✗ Failed to setup provider: {e}")
