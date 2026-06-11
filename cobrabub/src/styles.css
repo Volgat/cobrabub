@@ -310,11 +310,25 @@ body {
     flex: 1;
     position: relative;
     overflow: hidden;
+    display: flex;
+}
+
+#line-numbers {
+    width: 50px;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    padding: 16px 8px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    text-align: right;
+    user-select: none;
+    overflow: hidden;
 }
 
 #code-editor {
-    width: 100%;
-    height: 100%;
+    flex: 1;
     background-color: var(--bg-primary);
     color: var(--text-primary);
     border: none;
@@ -324,7 +338,24 @@ body {
     line-height: 1.6;
     resize: none;
     outline: none;
+    white-space: pre;
+    overflow-x: auto;
 }
+
+/* Syntax highlighting colors */
+.syntax-keyword { color: #569cd6; font-weight: bold; }
+.syntax-string { color: #ce9178; }
+.syntax-comment { color: #6a9955; font-style: italic; }
+.syntax-function { color: #dcdcaa; }
+.syntax-number { color: #b5cea8; }
+.syntax-operator { color: #d4d4d4; }
+.syntax-variable { color: #9cdcfe; }
+.syntax-class { color: #4ec9b0; }
+.syntax-type { color: #4ec9b0; }
+.syntax-parameter { color: #9cdcfe; }
+.syntax-property { color: #9cdcfe; }
+.syntax-tag { color: #569cd6; }
+.syntax-attribute { color: #9cdcfe; }
 
 .editor-status {
     height: 24px;
@@ -336,6 +367,24 @@ body {
     padding: 0 12px;
     font-size: 12px;
     color: var(--text-secondary);
+}
+
+#save-indicator {
+    font-size: 11px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#save-indicator.visible {
+    opacity: 1;
+}
+
+#save-indicator.saved {
+    color: var(--success-color);
+}
+
+#save-indicator.saving {
+    color: var(--warning-color);
 }
 
 /* Agent Panel */
