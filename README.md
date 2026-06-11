@@ -258,6 +258,18 @@ Les binaires seront générés dans le dossier `dist/`.
 - [ ] Historique des conversations
 - [ ] Export de configurations
 
+## 💳 Modèle Freemium & Système de Licence
+
+CobraBub IDE adopte un modèle freemium sécurisé et hautement performant :
+
+- **Version Gratuite (Trial)** : Accès illimité à l'éditeur et au terminal, avec une limite de **10 requêtes de l'Agent IA par jour**.
+- **Version Pro ($5/mois ou $48/an)** : Accès illimité à l'Agent IA avec support des modèles avancés (Claude 3.5, GPT-4o, etc.).
+
+### Validation Cryptographique Stateless (Hors-ligne)
+Pour garantir une réactivité maximale et le respect de la vie privée, le système de licence utilise des clés signées par **HMAC-SHA256**. L'application de bureau valide localement la signature de la clé, éliminant ainsi le besoin de se connecter à une base de données distante à chaque requête, tout en permettant une vérification en temps réel et hors-ligne.
+
+Le site commercial complet (`website/`) est construit avec **Next.js (App Router)** et prêt à être déployé sur **Vercel** pour la gestion des clés de licence et les téléchargements des releases.
+
 ## 🤝 Contribution
 
 Les contributions sont les bienvenues ! Voici comment aider:

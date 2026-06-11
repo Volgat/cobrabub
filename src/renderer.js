@@ -111,7 +111,11 @@ const TRANSLATIONS = {
     android_always_show: "Toujours afficher le menu Android",
     android_help: "Cette option permet d'analyser le dossier ouvert pour détecter des fichiers spécifiques (comme build.gradle ou AndroidManifest.xml). Si détecté, le menu Android s'active pour vous permettre de lancer un émulateur en un clic.",
     editor_text_color: "✍️ Couleur du texte de l'éditeur :",
-    reset: "Réinitialiser"
+    reset: "Réinitialiser",
+    tab_license: "Licence",
+    license_key: "🔑 Clé de licence CobraBub :",
+    license_hint: "Obtenez votre clé sur le site commercial CobraBub.",
+    license_status: "Statut de la licence :"
   },
   en: {
     settings: "Settings",
@@ -192,7 +196,11 @@ const TRANSLATIONS = {
     android_always_show: "Always show Android menu",
     android_help: "This option analyzes the opened directory to detect specific files (like build.gradle or AndroidManifest.xml). If detected, the Android menu activates to let you launch an emulator in one click.",
     editor_text_color: "✍️ Editor Text Color:",
-    reset: "Reset"
+    reset: "Reset",
+    tab_license: "License",
+    license_key: "🔑 CobraBub License Key:",
+    license_hint: "Get your key from the CobraBub commercial website.",
+    license_status: "License Status:"
   },
   es: {
     settings: "Configuración",
@@ -273,7 +281,11 @@ const TRANSLATIONS = {
     android_always_show: "Mostrar siempre el menú Android",
     android_help: "Esta opción analiza la carpeta abierta para detectar archivos específicos (como build.gradle o AndroidManifest.xml). Si se detecta, el menú de Android se activa para permitirle iniciar un emulador con un solo clic.",
     editor_text_color: "✍️ Color de texto del editor:",
-    reset: "Restablecer"
+    reset: "Restablecer",
+    tab_license: "Licencia",
+    license_key: "🔑 Clave de licencia CobraBub:",
+    license_hint: "Obtenga su clave en el sitio web comercial de CobraBub.",
+    license_status: "Estado de la licencia:"
   }
 };
 
@@ -335,6 +347,17 @@ function setupEventListeners() {
 
   document.getElementById('configure-model').addEventListener('click', showConfigModal);
   document.getElementById('agent-settings').addEventListener('click', showConfigModal);
+
+  const licenseFooter = document.getElementById('license-status-footer');
+  if (licenseFooter) {
+    licenseFooter.addEventListener('click', () => {
+      showConfigModal();
+      const licenseTabBtn = document.querySelector('.modal-tab-btn[data-tab="tab-license"]');
+      if (licenseTabBtn) {
+        licenseTabBtn.click();
+      }
+    });
+  }
   document.getElementById('toggle-agent-panel').addEventListener('click', toggleAgentPanel);
 
   // Config modal
@@ -606,6 +629,10 @@ function applyLanguage(lang) {
   setText('tab-title-ai', dict.tab_ai);
   setText('tab-title-appearance', dict.tab_appearance);
   setText('tab-title-github', dict.tab_github);
+  setText('tab-title-license', dict.tab_license);
+  setText('lbl-license-key', dict.license_key);
+  setText('hint-license-key', dict.license_hint);
+  setText('lbl-license-status', dict.license_status);
   
   setText('lbl-provider', dict.provider);
   setText('lbl-api-url', dict.api_url);
@@ -1170,16 +1197,64 @@ function updateFileLanguage(filePath) {
 }
 
 // ─── Config & Model ───────────────────────────────────────────────────────────
+function updateLicenseUI() {
+  const badge = document.getElementById('license-status-badge');
+  const footerBadge = document.getElementById('license-status-footer');
+  const details = document.getElementById('license-details-text');
+  
+  const plan = modelConfig?.licenseStatus || 'free';
+  const hasKey = !!modelConfig?.licenseKey;
+  
+  if (badge) {
+    if (plan === 'pro' || plan === 'annual') {
+      badge.textContent = plan === 'annual' ? 'PRO ANNUEL' : 'PRO';
+      badge.style.background = 'var(--primary)';
+      badge.style.color = '#fff';
+    } else {
+      badge.textContent = hasKey ? 'EXPIRED / INVALID' : 'FREE TRIAL';
+      badge.style.background = 'rgba(255,255,255,0.1)';
+      badge.style.color = 'var(--text-muted)';
+    }
+  }
+
+  if (footerBadge) {
+    if (plan === 'pro' || plan === 'annual') {
+      footerBadge.textContent = plan === 'annual' ? 'PRO ANNUEL' : 'PRO';
+      footerBadge.style.background = 'var(--primary)';
+      footerBadge.style.color = '#fff';
+      footerBadge.style.borderColor = 'var(--primary)';
+    } else {
+      footerBadge.textContent = 'FREE';
+      footerBadge.style.background = 'rgba(255,255,255,0.05)';
+      footerBadge.style.color = 'var(--text-muted)';
+      footerBadge.style.borderColor = 'var(--border)';
+    }
+  }
+
+  if (details) {
+    if (plan === 'pro' || plan === 'annual') {
+      details.innerHTML = `Licence active ! Merci de soutenir CobraBub. Version Pro illimitée activée.`;
+      details.style.color = '#fff';
+    } else {
+      details.innerHTML = `Veuillez saisir une clé valide pour activer la version Pro illimitée. Obtenez votre clé sur <a href="https://cobrabub.vercel.app" style="color: var(--primary); text-decoration: underline;" target="_blank">https://cobrabub.vercel.app</a>`;
+      details.style.color = 'var(--text-muted)';
+    }
+  }
+}
+
 async function loadModelConfig() {
   modelConfig = await ipcRenderer.invoke('get-model-config');
   populateConfigModal();
   updateStatusBar();
+  updateLicenseUI();
 }
 
 function populateConfigModal() {
   if (!modelConfig) return;
   const s = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
   s('model-type-config', modelConfig.type);
+  s('license-key', modelConfig.licenseKey || '');
+  updateLicenseUI();
   s('model-type', modelConfig.type);
   s('api-key', modelConfig.apiKey);
   s('model-name', modelConfig.modelName);
@@ -1254,6 +1329,8 @@ function onModelTypeChange() {
 }
 
 async function saveModelConfig() {
+  const licenseKeyVal = document.getElementById('license-key')?.value || '';
+  
   const config = {
     type:      document.getElementById('model-type-config')?.value || 'anthropic',
     apiKey:    document.getElementById('api-key')?.value || '',
@@ -1268,11 +1345,25 @@ async function saveModelConfig() {
     androidAlwaysShow: document.getElementById('android-always-show-checkbox')?.checked ?? false,
     editorTextColor: isEditorTextColorCustomized 
       ? (document.getElementById('editor-text-color-input')?.value || '') 
-      : (modelConfig?.editorTextColor || '')
+      : (modelConfig?.editorTextColor || ''),
+    licenseKey: licenseKeyVal,
+    licenseStatus: modelConfig?.licenseStatus || 'free'
   };
+
+  if (licenseKeyVal) {
+    const validateRes = await ipcRenderer.invoke('validate-license', licenseKeyVal);
+    if (validateRes.success) {
+      config.licenseStatus = validateRes.plan;
+    } else {
+      alert("Erreur de licence : " + validateRes.error);
+      config.licenseStatus = 'free';
+    }
+  } else {
+    config.licenseStatus = 'free';
+  }
   
   await ipcRenderer.invoke('save-model-config', config);
-  modelConfig = config;
+  modelConfig = { ...modelConfig, ...config };
   
   applyTheme(config.theme);
   applyLanguage(config.language);

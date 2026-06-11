@@ -153,6 +153,64 @@ app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) creat
 
 // ─── Persistent config ────────────────────────────────────────────────────────
 const CONFIG_PATH = path.join(app.getPath('userData'), 'cobrabub-config.json');
+const SECRET = "cobrabub-secret-key-ameforge-2026";
+
+function verifyLicenseKeyLocal(key) {
+  if (!key || typeof key !== 'string') {
+    return { valid: false, reason: "Aucune clé fournie" };
+  }
+  const parts = key.split('.');
+  if (parts.length !== 2) {
+    return { valid: false, reason: "Format de licence invalide" };
+  }
+  const [payloadBase64, signature] = parts;
+  try {
+    const crypto = require('crypto');
+    const hmac = crypto.createHmac('sha256', SECRET);
+    hmac.update(payloadBase64);
+    const expectedSignature = hmac.digest('hex');
+    if (signature !== expectedSignature) {
+      return { valid: false, reason: "Signature invalide (clé contrefaite)" };
+    }
+    const payloadStr = Buffer.from(payloadBase64, 'base64').toString('utf-8');
+    const payload = JSON.parse(payloadStr);
+    
+    // Check expiration date
+    const now = new Date();
+    const expiry = new Date(payload.expiresAt);
+    if (now > expiry) {
+      return { valid: false, reason: "La licence a expiré", payload };
+    }
+    return { valid: true, payload };
+  } catch (e) {
+    return { valid: false, reason: "Erreur de décodage de la clé" };
+  }
+}
+
+function checkLicenseLimits() {
+  if (modelConfig.licenseStatus === 'pro' || modelConfig.licenseStatus === 'annual') {
+    return { allowed: true };
+  }
+  
+  const today = new Date().toISOString().split('T')[0];
+  if (!modelConfig.lastRequestDate || modelConfig.lastRequestDate !== today) {
+    modelConfig.lastRequestDate = today;
+    modelConfig.agentRequestsToday = 1;
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(modelConfig, null, 2), 'utf-8');
+    return { allowed: true, remaining: 9 };
+  }
+  
+  if (modelConfig.agentRequestsToday >= 10) {
+    return {
+      allowed: false,
+      reason: "Limite quotidienne atteinte. Vous avez utilisé vos 10 requêtes IA gratuites pour aujourd'hui. Veuillez souscrire à la version Pro sur https://cobrabub.vercel.app pour débloquer l'accès illimité."
+    };
+  }
+  
+  modelConfig.agentRequestsToday++;
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(modelConfig, null, 2), 'utf-8');
+  return { allowed: true, remaining: 10 - modelConfig.agentRequestsToday };
+}
 
 let modelConfig = {
   type: 'anthropic',
@@ -166,13 +224,29 @@ let modelConfig = {
   githubEmail: '',
   androidAutoDetect: true,
   androidAlwaysShow: true,
-  editorTextColor: ''
+  editorTextColor: '',
+  licenseKey: '',
+  licenseStatus: 'free',
+  agentRequestsToday: 0,
+  lastRequestDate: ''
 };
 
 try {
   if (fs.existsSync(CONFIG_PATH)) {
     modelConfig = { ...modelConfig, ...JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8')) };
     console.log('✓ Config loaded');
+    
+    // Validate key at startup
+    if (modelConfig.licenseKey) {
+      const res = verifyLicenseKeyLocal(modelConfig.licenseKey);
+      if (res.valid) {
+        modelConfig.licenseStatus = res.payload.plan;
+      } else {
+        modelConfig.licenseStatus = 'free';
+      }
+    } else {
+      modelConfig.licenseStatus = 'free';
+    }
   }
 } catch (e) { console.error('Config load error:', e.message); }
 
@@ -183,6 +257,18 @@ ipcMain.handle('save-model-config', async (event, config) => {
   return { success: true };
 });
 ipcMain.handle('get-model-config', async () => modelConfig);
+
+ipcMain.handle('validate-license', async (event, key) => {
+  const res = verifyLicenseKeyLocal(key);
+  if (res.valid) {
+    modelConfig.licenseKey = key;
+    modelConfig.licenseStatus = res.payload.plan;
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(modelConfig, null, 2), 'utf-8');
+    return { success: true, plan: res.payload.plan, email: res.payload.email, expiresAt: res.payload.expiresAt };
+  } else {
+    return { success: false, error: res.reason };
+  }
+});
 
 // ─── File Operations ───────────────────────────────────────────────────────────
 ipcMain.handle('open-directory-dialog', async () => {
@@ -570,6 +656,12 @@ Always explain what you're doing before writing files or running commands.`;
 // ─── Chat handler ─────────────────────────────────────────────────────────────
 ipcMain.handle('send-chat-message', async (event, { message, files, activeFile, history, fileTree, attachments }) => {
   try {
+    // Check license limits
+    const limitCheck = checkLicenseLimits();
+    if (!limitCheck.allowed) {
+      return { success: false, error: limitCheck.reason };
+    }
+
     const systemPrompt = buildSystemPrompt(fileTree, files);
     const messages = [{ role: 'system', content: systemPrompt }];
 
@@ -624,6 +716,12 @@ ipcMain.handle('send-chat-message', async (event, { message, files, activeFile, 
 // ─── Agent task handler ───────────────────────────────────────────────────────
 ipcMain.handle('run-agent-task', async (event, { instruction, files, projectPath, fileTree, attachments }) => {
   try {
+    // Check license limits
+    const limitCheck = checkLicenseLimits();
+    if (!limitCheck.allowed) {
+      return { success: false, error: limitCheck.reason };
+    }
+
     const systemPrompt = buildSystemPrompt(fileTree, files);
     
     let userContent = [];

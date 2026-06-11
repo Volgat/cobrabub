@@ -236,6 +236,8 @@
     <div class="status-left">
         <span id="connection-status" class="status-indicator disconnected">●</span>
         <span id="agent-status">Non configuré</span>
+        <span class="sep">|</span>
+        <span id="license-status-footer" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 800; cursor: pointer; border: 1px solid var(--border);">FREE</span>
     </div>
     <div class="status-center">🐍 CobraBub IDE</div>
     <div class="status-right">
@@ -259,6 +261,7 @@
             <button class="modal-tab-btn" data-tab="tab-appearance"><i data-lucide="palette" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> <span id="tab-title-appearance">Apparence & Langues</span></button>
             <button class="modal-tab-btn" data-tab="tab-github"><i data-lucide="github" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> <span id="tab-title-github">GitHub</span></button>
             <button class="modal-tab-btn" data-tab="tab-android"><i data-lucide="smartphone" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> <span id="tab-title-android">Android</span></button>
+            <button class="modal-tab-btn" data-tab="tab-license"><i data-lucide="key" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> <span id="tab-title-license">Licence</span></button>
         </div>
         
         <div class="modal-body" style="max-height: 480px; overflow-y: auto;">
@@ -365,6 +368,24 @@
                 </div>
                 <div style="margin-top: 10px; padding: 10px; border-radius: var(--radius); background: rgba(255,255,255,0.02); border: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); line-height: 1.4;">
                     <p id="lbl-android-help">Cette option permet d'analyser le dossier ouvert pour détecter des fichiers spécifiques (comme <code>build.gradle</code> ou <code>AndroidManifest.xml</code>). Si détecté, le menu Android s'active pour vous permettre de lancer un émulateur en un clic.</p>
+                </div>
+            </div>
+            
+            <!-- Tab License -->
+            <div class="modal-tab-content" id="tab-license" style="display: none;">
+                <div class="form-group">
+                    <label id="lbl-license-key">🔑 Clé de licence CobraBub :</label>
+                    <input type="text" id="license-key" placeholder="Collez votre clé de licence...">
+                    <small class="hint" id="hint-license-key">Obtenez votre clé sur le site commercial CobraBub.</small>
+                </div>
+                <div style="margin-top: 15px; padding: 12px; border-radius: var(--radius); background: rgba(124,106,247,0.05); border: 1px solid rgba(124,106,247,0.2); font-size: 12px; line-height: 1.4;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong id="lbl-license-status">Statut de la licence :</strong>
+                        <span id="license-status-badge" style="padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 10px; background: rgba(255,255,255,0.1); color: var(--text);">FREE TRIAL</span>
+                    </div>
+                    <div id="license-details-text" style="color: var(--text-muted);">
+                        Veuillez saisir une clé valide pour activer la version Pro illimitée.
+                    </div>
                 </div>
             </div>
         </div>
