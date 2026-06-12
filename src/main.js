@@ -28,7 +28,7 @@ const MENU_TRANSLATIONS = {
     zoomOut: 'Zoom arrière',
     fullScreen: 'Plein écran',
     help: 'Aide',
-    about: 'Documentation',
+    about: 'Documentation & À propos de CobraBub',
     checkForUpdates: 'Vérifier les mises à jour'
   },
   en: {
@@ -50,7 +50,7 @@ const MENU_TRANSLATIONS = {
     zoomOut: 'Zoom Out',
     fullScreen: 'Toggle Full Screen',
     help: 'Help',
-    about: 'Documentation',
+    about: 'Documentation & About CobraBub',
     checkForUpdates: 'Check for Updates'
   },
   es: {
@@ -72,7 +72,7 @@ const MENU_TRANSLATIONS = {
     zoomOut: 'Alejar',
     fullScreen: 'Pantalla completa',
     help: 'Ayuda',
-    about: 'Documentación',
+    about: 'Documentación y Acerca de CobraBub',
     checkForUpdates: 'Buscar actualizaciones'
   }
 };
