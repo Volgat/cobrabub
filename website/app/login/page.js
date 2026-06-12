@@ -6,10 +6,56 @@ import Link from 'next/link';
 import Image from 'next/image';
 import styles from './login.module.css';
 
+const LOGIN_TRANSLATIONS = {
+  en: {
+    backHome: "Back to Home",
+    title: "AmeForge Client Portal",
+    subtitle: "Generate and manage your CobraBub IDE license",
+    emailLabel: "Your Email Address",
+    planLabel: "Selected Plan",
+    planFree: "Free Trial (Limit: 10 AI Requests/Day)",
+    planPro: "Pro Monthly ($5 / month)",
+    planAnnual: "Pro Annual ($48 / year)",
+    stripeHeader: "Stripe Payment Portal (Simulated)",
+    stripeTestMode: "Test Mode",
+    cardNum: "Card Number",
+    cardExpiry: "Expiry Date",
+    cardCvc: "CVC",
+    stripeHint: "Use fake testing card numbers. No real charge will be made.",
+    btnActivateFree: "Activate Free Trial",
+    btnActivatePro: "Confirm Payment & Activate Pro",
+    loading: "Processing payment...",
+    errorEmail: "Please enter your email address.",
+    apiError: "Error generating license. Please try again."
+  },
+  fr: {
+    backHome: "Retour à l'accueil",
+    title: "Espace Client AmeForge",
+    subtitle: "Générez et gérez votre licence CobraBub IDE",
+    emailLabel: "Votre adresse e-mail",
+    planLabel: "Formule choisie",
+    planFree: "Essai Gratuit (Limite : 10 requêtes IA/jour)",
+    planPro: "Pro Mensuel (5$ / mois)",
+    planAnnual: "Pro Annuel (48$ / an)",
+    stripeHeader: "Portail de Paiement Stripe (Simulé)",
+    stripeTestMode: "Mode Test",
+    cardNum: "Numéro de carte",
+    cardExpiry: "Date d'expiration",
+    cardCvc: "CVC",
+    stripeHint: "Utilisez des numéros de test. Aucun débit réel ne sera effectué.",
+    btnActivateFree: "Activer l'essai gratuit",
+    btnActivatePro: "Confirmer le paiement & Activer Pro",
+    loading: "Traitement en cours...",
+    errorEmail: "Veuillez saisir votre adresse e-mail.",
+    apiError: "Erreur lors de la génération de la licence."
+  }
+};
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
+  const [lang, setLang] = useState('en');
   const [email, setEmail] = useState('');
   const [plan, setPlan] = useState('pro');
   const [loading, setLoading] = useState(false);
@@ -25,12 +71,22 @@ function LoginContent() {
     if (planParam === 'free' || planParam === 'pro' || planParam === 'annual') {
       setPlan(planParam);
     }
+    const langParam = searchParams.get('lang');
+    if (langParam === 'fr' || langParam === 'en') {
+      setLang(langParam);
+    }
   }, [searchParams]);
+
+  const t = LOGIN_TRANSLATIONS[lang];
+
+  const toggleLang = () => {
+    setLang(lang === 'en' ? 'fr' : 'en');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email) {
-      setError("Veuillez saisir votre adresse e-mail.");
+      setError(t.errorEmail);
       return;
     }
     
@@ -50,12 +106,12 @@ function LoginContent() {
       const data = await res.json();
       if (data.success) {
         // Redirect to dashboard with details
-        router.push(`/dashboard?email=${encodeURIComponent(data.email)}&key=${encodeURIComponent(data.licenseKey)}&plan=${encodeURIComponent(data.plan)}`);
+        router.push(`/dashboard?email=${encodeURIComponent(data.email)}&key=${encodeURIComponent(data.licenseKey)}&plan=${encodeURIComponent(data.plan)}&lang=${lang}`);
       } else {
-        setError(data.error || "Une erreur est survenue lors de la création de la licence.");
+        setError(data.error || t.apiError);
       }
     } catch (err) {
-      setError("Erreur réseau. Impossible de contacter le serveur de licence.");
+      setError("Network error. Unable to contact license server.");
     } finally {
       setLoading(false);
     }
@@ -63,22 +119,39 @@ function LoginContent() {
 
   return (
     <div className={styles.loginCard}>
-      <Link href="/" className={styles.backLink}>← Retour à l'accueil</Link>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <Link href="/" className={styles.backLink}>{t.backHome}</Link>
+        <button onClick={toggleLang} className={styles.backLink} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+          {lang.toUpperCase()}
+        </button>
+      </div>
       
       <div className={styles.logoHeader}>
-        <Image src="/logo.png" alt="CobraBub logo" width={48} height={48} className={styles.logo} />
-        <h2>Espace Client AmeForge</h2>
-        <p>Générez et gérez votre licence CobraBub IDE</p>
+        <Image 
+          src="/logo.png" 
+          alt="CobraBub" 
+          width={64} 
+          height={64} 
+          className={styles.logo} 
+          style={{ 
+            borderRadius: '12px',
+            border: '2px solid var(--primary)',
+            boxShadow: '0 0 15px var(--primary-glow)'
+          }}
+          priority
+        />
+        <h2>{t.title}</h2>
+        <p>{t.subtitle}</p>
       </div>
 
       {error && <div className={styles.errorBanner}>{error}</div>}
 
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
-          <label>Votre adresse e-mail</label>
+          <label>{t.emailLabel}</label>
           <input 
             type="email" 
-            placeholder="developpeur@example.com" 
+            placeholder="developer@example.com" 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -87,27 +160,27 @@ function LoginContent() {
         </div>
 
         <div className={styles.formGroup}>
-          <label>Formule choisie</label>
+          <label>{t.planLabel}</label>
           <select 
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
             className={styles.select}
           >
-            <option value="free">Trial (Gratuit - Limité)</option>
-            <option value="pro">Pro Mensuel (5$ / mois)</option>
-            <option value="annual">Pro Annuel (48$ / an)</option>
+            <option value="free">{t.planFree}</option>
+            <option value="pro">{t.planPro}</option>
+            <option value="annual">{t.planAnnual}</option>
           </select>
         </div>
 
         {plan !== 'free' && (
           <div className={styles.stripeMock}>
             <div className={styles.stripeHeader}>
-              <span>💳 Passerelle de Paiement Stripe (Simulée)</span>
-              <span className={styles.testBadge}>Test Mode</span>
+              <span>{t.stripeHeader}</span>
+              <span className={styles.testBadge}>{t.stripeTestMode}</span>
             </div>
             <div className={styles.formRow}>
               <div className={styles.formGroup} style={{ flex: 2 }}>
-                <label>Numéro de carte</label>
+                <label>{t.cardNum}</label>
                 <input 
                   type="text" 
                   value={cardNumber} 
@@ -116,17 +189,17 @@ function LoginContent() {
                 />
               </div>
               <div className={styles.formGroup} style={{ flex: 1 }}>
-                <label>Date Expir.</label>
+                <label>{t.cardExpiry}</label>
                 <input 
                   type="text" 
                   value={cardExpiry}
                   onChange={(e) => setCardExpiry(e.target.value)}
-                  placeholder="MM/AA"
+                  placeholder="MM/YY"
                   className={styles.input}
                 />
               </div>
               <div className={styles.formGroup} style={{ flex: 1 }}>
-                <label>CVC</label>
+                <label>{t.cardCvc}</label>
                 <input 
                   type="password" 
                   value={cardCvc}
@@ -135,12 +208,12 @@ function LoginContent() {
                 />
               </div>
             </div>
-            <small className={styles.stripeHint}>Utilisez des numéros de test. Aucun débit réel ne sera effectué.</small>
+            <small className={styles.stripeHint}>{t.stripeHint}</small>
           </div>
         )}
 
         <button type="submit" disabled={loading} className={styles.submitBtn}>
-          {loading ? "Traitement en cours..." : plan === 'free' ? "Activer l'essai gratuit" : "Confirmer le paiement & Activer Pro"}
+          {loading ? t.loading : plan === 'free' ? t.btnActivateFree : t.btnActivatePro}
         </button>
       </form>
     </div>
@@ -150,7 +223,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <main className={styles.main}>
-      <Suspense fallback={<div className={styles.loadingState}>Chargement de la session...</div>}>
+      <Suspense fallback={<div className={styles.loadingState}>Loading Client Session...</div>}>
         <LoginContent />
       </Suspense>
     </main>

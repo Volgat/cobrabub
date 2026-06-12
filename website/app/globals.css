@@ -1,19 +1,37 @@
 :root {
-  --background: #080710;
-  --foreground: #ffffff;
-  --text-muted: #9fa1b5;
-  --primary: #7c6af7;
-  --primary-glow: rgba(124, 106, 247, 0.15);
-  --accent: #ff007f;
-  --accent-glow: rgba(255, 0, 127, 0.15);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(124, 106, 247, 0.4);
-  --glass: rgba(255, 255, 255, 0.02);
-  --glass-hover: rgba(255, 255, 255, 0.05);
-  --card-bg: rgba(15, 14, 26, 0.6);
-  --success: #00e676;
-  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  /* Dark Mode - Obsidian Golden Green (Default) */
+  --background: #080b0e; /* Deep Obsidian Black-Green */
+  --foreground: #f1f5f9;
+  --text-muted: #8092a2;
+  --primary: #a3e635; /* Golden Green / Lime Neon */
+  --primary-glow: rgba(163, 230, 53, 0.12);
+  --accent: #eab308; /* Amber Gold Neon */
+  --accent-glow: rgba(234, 179, 8, 0.12);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-focus: rgba(163, 230, 53, 0.4);
+  --glass: rgba(255, 255, 255, 0.015);
+  --glass-hover: rgba(255, 255, 255, 0.04);
+  --card-bg: rgba(12, 18, 23, 0.75);
+  --success: #22c55e;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Fira Code', var(--font-geist-mono), monospace;
+}
+
+[data-theme='light'] {
+  /* Light Mode - Slate & Olive Gold */
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --text-muted: #64748b;
+  --primary: #558b0f; /* Olive Golden Green */
+  --primary-glow: rgba(85, 139, 15, 0.08);
+  --accent: #ca8a04; /* Gold/Amber */
+  --accent-glow: rgba(202, 138, 4, 0.08);
+  --border: rgba(15, 23, 42, 0.08);
+  --border-focus: rgba(85, 139, 15, 0.4);
+  --glass: rgba(15, 23, 42, 0.02);
+  --glass-hover: rgba(15, 23, 42, 0.04);
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --success: #16a34a;
 }
 
 * {
@@ -32,12 +50,13 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 body {
   background-image: 
-    radial-gradient(circle at 10% 20%, var(--primary-glow) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, var(--accent-glow) 0%, transparent 40%);
+    radial-gradient(circle at 10% 20%, var(--primary-glow) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, var(--accent-glow) 0%, transparent 45%);
   background-attachment: fixed;
 }
 
