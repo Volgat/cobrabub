@@ -28,7 +28,7 @@ const MENU_TRANSLATIONS = {
     zoomOut: 'Zoom arrière',
     fullScreen: 'Plein écran',
     help: 'Aide',
-    about: 'Documentation & À propos de AmeForge',
+    about: 'Documentation',
     checkForUpdates: 'Vérifier les mises à jour'
   },
   en: {
@@ -50,7 +50,7 @@ const MENU_TRANSLATIONS = {
     zoomOut: 'Zoom Out',
     fullScreen: 'Toggle Full Screen',
     help: 'Help',
-    about: 'Documentation & About AmeForge',
+    about: 'Documentation',
     checkForUpdates: 'Check for Updates'
   },
   es: {
@@ -72,7 +72,7 @@ const MENU_TRANSLATIONS = {
     zoomOut: 'Alejar',
     fullScreen: 'Pantalla completa',
     help: 'Ayuda',
-    about: 'Documentación y Acerca de AmeForge',
+    about: 'Documentación',
     checkForUpdates: 'Buscar actualizaciones'
   }
 };
