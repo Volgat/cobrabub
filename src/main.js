@@ -203,7 +203,7 @@ function checkLicenseLimits() {
   if (modelConfig.agentRequestsToday >= 10) {
     return {
       allowed: false,
-      reason: "Limite quotidienne atteinte. Vous avez utilisé vos 10 requêtes IA gratuites pour aujourd'hui. Veuillez souscrire à la version Pro sur https://cobrabub.vercel.app pour débloquer l'accès illimité."
+      reason: "Limite quotidienne atteinte. Vous avez utilisé vos 10 requêtes IA gratuites pour aujourd'hui. Veuillez souscrire à la version Pro sur https://www.cobrabub.com pour débloquer l'accès illimité."
     };
   }
   

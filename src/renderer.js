@@ -1236,7 +1236,7 @@ function updateLicenseUI() {
       details.innerHTML = `Licence active ! Merci de soutenir CobraBub. Version Pro illimitée activée.`;
       details.style.color = '#fff';
     } else {
-      details.innerHTML = `Veuillez saisir une clé valide pour activer la version Pro illimitée. Obtenez votre clé sur <a href="https://cobrabub.vercel.app" style="color: var(--primary); text-decoration: underline;" target="_blank">https://cobrabub.vercel.app</a>`;
+      details.innerHTML = `Veuillez saisir une clé valide pour activer la version Pro illimitée. Obtenez votre clé sur <a href="https://www.cobrabub.com" style="color: var(--primary); text-decoration: underline;" target="_blank">https://www.cobrabub.com</a>`;
       details.style.color = 'var(--text-muted)';
     }
   }
