@@ -28,7 +28,8 @@ const MENU_TRANSLATIONS = {
     zoomOut: 'Zoom arrière',
     fullScreen: 'Plein écran',
     help: 'Aide',
-    about: 'Documentation & À propos de AmeForge'
+    about: 'Documentation & À propos de AmeForge',
+    checkForUpdates: 'Vérifier les mises à jour'
   },
   en: {
     file: 'File',
@@ -49,7 +50,8 @@ const MENU_TRANSLATIONS = {
     zoomOut: 'Zoom Out',
     fullScreen: 'Toggle Full Screen',
     help: 'Help',
-    about: 'Documentation & About AmeForge'
+    about: 'Documentation & About AmeForge',
+    checkForUpdates: 'Check for Updates'
   },
   es: {
     file: 'Archivo',
@@ -70,7 +72,8 @@ const MENU_TRANSLATIONS = {
     zoomOut: 'Alejar',
     fullScreen: 'Pantalla completa',
     help: 'Ayuda',
-    about: 'Documentación y Acerca de AmeForge'
+    about: 'Documentación y Acerca de AmeForge',
+    checkForUpdates: 'Buscar actualizaciones'
   }
 };
 
@@ -115,7 +118,13 @@ function createMenu(lang) {
         {
           label: dict.about,
           click: async () => {
-            await shell.openExternal('https://ameforge.tech/#about');
+            await shell.openExternal('https://www.cobrabub.com/#documentation');
+          }
+        },
+        {
+          label: dict.checkForUpdates,
+          click: () => {
+            checkForUpdatesManual();
           }
         }
       ]
@@ -887,3 +896,192 @@ ipcMain.handle('detect-android-project', async (event, dirPath) => {
   if (!dirPath) return false;
   return checkIsAndroidProject(dirPath);
 });
+
+// ─── Auto Update System ────────────────────────────────────────────────────────
+const UPDATE_LOCALIZATION = {
+  fr: {
+    checking: "Vérification des mises à jour...",
+    upToDate: "Votre application CobraBub IDE est à jour (Version {v}).",
+    newVersionTitle: "Mise à jour disponible",
+    newVersionMsg: "Une nouvelle version de CobraBub IDE ({latest}) est disponible (version actuelle : {current}). Souhaitez-vous la télécharger et l'installer automatiquement ?",
+    btnDownload: "Télécharger & Installer",
+    btnLater: "Plus tard",
+    noInstaller: "Une nouvelle version {latest} est disponible, mais aucun installateur Windows n'a été trouvé.",
+    downloading: "Téléchargement en cours...",
+    downloadingMsg: "Le téléchargement de la mise à jour est en cours. L'application se fermera automatiquement pour lancer l'installation une fois le téléchargement terminé.",
+    errorTitle: "Erreur de mise à jour",
+    errorMsg: "Impossible de vérifier les mises à jour : {err}"
+  },
+  en: {
+    checking: "Checking for updates...",
+    upToDate: "Your CobraBub IDE application is up to date (Version {v}).",
+    newVersionTitle: "Update Available",
+    newVersionMsg: "A new version of CobraBub IDE ({latest}) is available (current version: {current}). Would you like to download and install it automatically?",
+    btnDownload: "Download & Install",
+    btnLater: "Later",
+    noInstaller: "A new version {latest} is available, but no Windows installer asset was found.",
+    downloading: "Downloading Update...",
+    downloadingMsg: "The update is downloading. The application will close automatically and launch the installer once complete.",
+    errorTitle: "Update Error",
+    errorMsg: "Unable to check for updates: {err}"
+  },
+  es: {
+    checking: "Buscando actualizaciones...",
+    upToDate: "Su aplicación CobraBub IDE está actualizada (Versión {v}).",
+    newVersionTitle: "Actualización disponible",
+    newVersionMsg: "Una nueva versión de CobraBub IDE ({latest}) está disponible (versión actual: {current}). ¿Desea descargarla e instalarla automáticamente?",
+    btnDownload: "Descargar e instalar",
+    btnLater: "Más tarde",
+    noInstaller: "Una nueva versión {latest} está disponible, pero no se encontró ningún instalador de Windows.",
+    downloading: "Descargando actualización...",
+    downloadingMsg: "Se está descargando la actualización. La aplicación se cerrará automáticamente y ejecutará el instalador una vez finalizado.",
+    errorTitle: "Error de actualización",
+    errorMsg: "No se pudo buscar actualizaciones: {err}"
+  }
+};
+
+function getLatestRelease() {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'api.github.com',
+      port: 443,
+      path: '/repos/Volgat/cobrabub/releases/latest',
+      method: 'GET',
+      headers: {
+        'User-Agent': 'CobraBub-App-Updater'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          if (res.statusCode === 200) {
+            resolve(JSON.parse(data));
+          } else {
+            reject(new Error(`Status: ${res.statusCode}`));
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', (e) => reject(e));
+    req.end();
+  });
+}
+
+function isNewerVersion(current, latest) {
+  const cParts = current.replace(/^v/, '').split('.').map(Number);
+  const lParts = latest.replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < Math.max(cParts.length, lParts.length); i++) {
+    const c = cParts[i] || 0;
+    const l = lParts[i] || 0;
+    if (l > c) return true;
+    if (l < c) return false;
+  }
+  return false;
+}
+
+function downloadAndInstall(url, filename) {
+  const lang = modelConfig.language || 'fr';
+  const loc = UPDATE_LOCALIZATION[lang];
+
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: loc.downloading,
+    message: loc.downloadingMsg
+  });
+
+  const tempPath = path.join(app.getPath('temp'), filename);
+  const file = fs.createWriteStream(tempPath);
+
+  function downloadFile(downloadUrl) {
+    https.get(downloadUrl, (response) => {
+      if (response.statusCode === 302 || response.statusCode === 301) {
+        downloadFile(response.headers.location);
+        return;
+      }
+
+      if (response.statusCode !== 200) {
+        dialog.showMessageBox(mainWindow, {
+          type: 'error',
+          title: loc.errorTitle,
+          message: `HTTP Error: ${response.statusCode}`
+        });
+        return;
+      }
+
+      response.pipe(file);
+
+      file.on('finish', () => {
+        file.close(() => {
+          exec(`"${tempPath}"`, (err) => {
+            if (err) {
+              console.error("Failed to run installer:", err);
+            }
+          });
+          app.quit();
+        });
+      });
+    }).on('error', (err) => {
+      fs.unlink(tempPath, () => {});
+      dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: loc.errorTitle,
+        message: err.message
+      });
+    });
+  }
+
+  downloadFile(url);
+}
+
+async function checkForUpdatesManual() {
+  const lang = modelConfig.language || 'fr';
+  const loc = UPDATE_LOCALIZATION[lang];
+
+  try {
+    const latest = await getLatestRelease();
+    const latestVersion = latest.tag_name;
+    const currentVersion = app.getVersion();
+
+    if (isNewerVersion(currentVersion, latestVersion)) {
+      const asset = latest.assets.find(a => a.name.endsWith('.exe'));
+      if (!asset) {
+        dialog.showMessageBox(mainWindow, {
+          type: 'info',
+          title: loc.newVersionTitle,
+          message: loc.noInstaller.replace('{latest}', latestVersion)
+        });
+        return;
+      }
+
+      const response = await dialog.showMessageBox(mainWindow, {
+        type: 'question',
+        buttons: [loc.btnDownload, loc.btnLater],
+        defaultId: 0,
+        title: loc.newVersionTitle,
+        message: loc.newVersionMsg.replace('{latest}', latestVersion).replace('{current}', currentVersion)
+      });
+
+      if (response.response === 0) {
+        downloadAndInstall(asset.browser_download_url, asset.name);
+      }
+    } else {
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'CobraBub',
+        message: loc.upToDate.replace('{v}', currentVersion)
+      });
+    }
+  } catch (err) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: loc.errorTitle,
+      message: loc.errorMsg.replace('{err}', err.message)
+    });
+  }
+}

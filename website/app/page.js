@@ -12,7 +12,7 @@ const TRANSLATIONS = {
     navDownloads: "Downloads",
     navDocumentation: "Help & Docs",
     navClientArea: "Client Space",
-    badge: "Version v1.0.6 Now Available",
+    badge: "Version v1.0.7 Now Available",
     heroTitle: "The Code Editor Augmented by an Autonomous AI Agent",
     heroSubtitle: "CobraBub IDE is an ultra-lightweight and premium development environment developed by AmeForge. Run system commands in the integrated terminal, manage Git repositories, and let the AI agent code autonomously in a safe, loop-locked environment.",
     ctaDownload: "Get CobraBub",
@@ -89,7 +89,7 @@ const TRANSLATIONS = {
     navDownloads: "Téléchargements",
     navDocumentation: "Aide & Docs",
     navClientArea: "Espace Client",
-    badge: "Version v1.0.6 Disponible",
+    badge: "Version v1.0.7 Disponible",
     heroTitle: "L'éditeur de code augmenté par un Agent IA autonome",
     heroSubtitle: "CobraBub IDE est un environnement de développement ultra-léger et premium conçu par AmeForge. Exécutez vos commandes dans le terminal intégré, gérez vos dépôts Git, et laissez l'Agent IA coder de façon autonome en toute sécurité.",
     ctaDownload: "Télécharger CobraBub",
@@ -314,7 +314,7 @@ export default function Home() {
         <p className={styles.sectionSubtitle}>{t.downloadsSubtitle}</p>
         <div className={styles.downloadGrid}>
           {/* Windows */}
-          <a href="https://github.com/Volgat/cobrabub/releases/download/v1.0.6/CobraBub-Setup-1.0.6.exe" className={styles.downloadOption}>
+          <a href="https://github.com/Volgat/cobrabub/releases/download/v1.0.7/CobraBub-Setup-1.0.7.exe" className={styles.downloadOption}>
             <div className={styles.downloadIcon}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M0 3.449L9.75 2.1v9.45H0V3.449zM0 12.45h9.75v9.45L0 20.55v-8.1zM10.8 1.95L24 0v11.55H10.8V1.95zM10.8 12.45H24v11.55l-13.2-1.95v-9.6z" />
